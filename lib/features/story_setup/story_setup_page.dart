@@ -17,6 +17,26 @@ class _StorySetupPageState extends State<StorySetupPage> {
   final _ideaCtrl = TextEditingController();
   final _ideaFocus = FocusNode();
 
+  Future<void> _warmUpIcons() async {
+    final paths = <String>[
+      ..._heroes
+          .where((e) => e.storagePath.isNotEmpty)
+          .map((e) => e.storagePath),
+      ..._locations
+          .where((e) => e.storagePath.isNotEmpty)
+          .map((e) => e.storagePath),
+    ];
+
+    for (final p in paths) {
+      try {
+        final url = await FirebaseStorage.instance.ref(p).getDownloadURL();
+        await precacheImage(CachedNetworkImageProvider(url), context);
+      } catch (_) {
+        // ignore: network/config issues
+      }
+    }
+  }
+
   bool _isIdeaMode = false;
   bool _isListening = false;
 
@@ -96,6 +116,9 @@ class _StorySetupPageState extends State<StorySetupPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _warmUpIcons();
+    });
 
     // Idea mode depends ONLY on (listening OR hasText)
     void recompute() {
@@ -308,7 +331,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
                             _CarouselSection(
                               title: 'Hero',
                               subtitle: 'Swipe to choose',
-                              height: 210,
+                              height: 240,
                               items: _heroes,
                               initialPage: _heroIndex,
                               onPageChanged: (i) =>
@@ -319,7 +342,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
                             _CarouselSection(
                               title: 'Location',
                               subtitle: 'Swipe to choose',
-                              height: 210,
+                              height: 240,
                               items: _locations,
                               initialPage: _locIndex,
                               onPageChanged: (i) =>
@@ -330,7 +353,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
                             _CarouselSection(
                               title: 'Story Type',
                               subtitle: 'Swipe to choose',
-                              height: 210,
+                              height: 240,
                               items: _types,
                               initialPage: _typeIndex,
                               onPageChanged: (i) =>
@@ -614,7 +637,7 @@ class _CarouselSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = PageController(
-      viewportFraction: 0.62,
+      viewportFraction: 0.70,
       initialPage: initialPage,
     );
 
@@ -688,6 +711,10 @@ class _StorageImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bg = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.45);
+
     if (storagePath.isEmpty) {
       return Container(
         width: size,
@@ -695,11 +722,9 @@ class _StorageImage extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.white.withValues(alpha: 0.35),
+          color: bg,
         ),
-        child: Icon(fallbackIcon, size: size * 0.45),
+        child: Icon(fallbackIcon, size: size * 0.50),
       );
     }
 
@@ -707,21 +732,37 @@ class _StorageImage extends StatelessWidget {
       future: _getUrl(),
       builder: (context, snap) {
         if (!snap.hasData) {
-          return SizedBox(
+          return Container(
             width: size,
             height: size,
-            child: const Center(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              color: bg,
+            ),
+            child: const SizedBox(
+              width: 22,
+              height: 22,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
           );
         }
+
         return ClipRRect(
           borderRadius: BorderRadius.circular(18),
-          child: CachedNetworkImage(
-            imageUrl: snap.data!,
+          child: SizedBox(
             width: size,
             height: size,
-            fit: BoxFit.contain,
+            child: CachedNetworkImage(
+              imageUrl: snap.data!,
+              fit: BoxFit.cover, // ключ: картинка заполняет и не вылезает
+              placeholder: (_, __) => Container(color: bg),
+              errorWidget: (_, __, ___) => Container(
+                color: bg,
+                alignment: Alignment.center,
+                child: const Icon(Icons.broken_image_outlined),
+              ),
+            ),
           ),
         );
       },
@@ -745,7 +786,6 @@ class _PickCard extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.06)
         : const Color(0xFFFFFFFF);
 
-    const double imageSize = 110;
     final bool random = item.isRandom;
 
     return Padding(
@@ -777,36 +817,54 @@ class _PickCard extends StatelessWidget {
             ),
           ],
         ),
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            random
-                ? Container(
-                    width: imageSize,
-                    height: imageSize,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.white.withValues(alpha: 0.45),
-                    ),
-                    child: Icon(Icons.casino_rounded, size: imageSize * 0.52),
-                  )
-                : _StorageImage(
-                    storagePath: item.storagePath,
-                    size: imageSize,
-                    isDark: isDark,
-                    fallbackIcon: Icons.auto_awesome,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        child: LayoutBuilder(
+          builder: (context, c) {
+            // делаем персонажа крупнее: ~65% высоты карточки
+            final double imageSize = (c.maxHeight * 0.65).clamp(120.0, 160.0);
+
+            return Column(
+              children: [
+                Expanded(
+                  child: Center(
+                    child: random
+                        ? Container(
+                            width: imageSize,
+                            height: imageSize,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18),
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.white.withValues(alpha: 0.45),
+                            ),
+                            child: Icon(
+                              Icons.casino_rounded,
+                              size: imageSize * 0.55,
+                            ),
+                          )
+                        : _StorageImage(
+                            storagePath: item.storagePath,
+                            size: imageSize,
+                            isDark: isDark,
+                            fallbackIcon: Icons.auto_awesome,
+                          ),
                   ),
-            const SizedBox(height: 8),
-            Text(
-              item.title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              textAlign: TextAlign.center,
-            ),
-          ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
