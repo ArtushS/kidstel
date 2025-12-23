@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../shared/settings/app_settings.dart';
 import '../../shared/settings/settings_scope.dart';
 import '../../shared/settings/widgets/settings_section.dart';
@@ -15,13 +16,13 @@ class SettingsPage extends StatelessWidget {
     'hy': 'Armenian',
   };
 
-  String _themeLabel(AppThemeMode v) {
+  String _themeLabel(ThemeMode v) {
     switch (v) {
-      case AppThemeMode.system:
+      case ThemeMode.system:
         return 'System';
-      case AppThemeMode.light:
+      case ThemeMode.light:
         return 'Light';
-      case AppThemeMode.dark:
+      case ThemeMode.dark:
         return 'Dark';
     }
   }
@@ -99,13 +100,11 @@ class SettingsPage extends StatelessWidget {
               ),
               const Divider(height: 1),
               ...values.map((v) {
-                final selected = v == current;
                 return RadioListTile<T>(
                   value: v,
                   groupValue: current,
                   title: Text(label(v)),
                   onChanged: (val) => Navigator.of(ctx).pop(val),
-                  selected: selected,
                 );
               }),
               const SizedBox(height: 8),
@@ -156,7 +155,6 @@ class SettingsPage extends StatelessWidget {
     final controller = SettingsScope.of(context);
 
     if (!controller.isLoaded) {
-      // init() должен вызываться в app.dart. Но если забыли — покажем лоадер.
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
@@ -171,16 +169,16 @@ class SettingsPage extends StatelessWidget {
           SettingsSection(
             title: 'Appearance',
             children: [
-              ChoiceTile<AppThemeMode>(
+              ChoiceTile<ThemeMode>(
                 leading: const Icon(Icons.brightness_6_outlined),
                 title: 'Theme',
                 valueLabel: _themeLabel(s.themeMode),
                 onTap: () async {
-                  final picked = await _pickEnum<AppThemeMode>(
+                  final picked = await _pickEnum<ThemeMode>(
                     context: context,
                     title: 'Theme',
                     current: s.themeMode,
-                    values: AppThemeMode.values,
+                    values: ThemeMode.values,
                     label: _themeLabel,
                   );
                   if (picked != null) await controller.setThemeMode(picked);
@@ -206,7 +204,7 @@ class SettingsPage extends StatelessWidget {
                 title: 'Animations',
                 subtitle: 'Reduce motion if disabled',
                 value: s.animationsEnabled,
-                onChanged: (v) => controller.setAnimationsEnabled(v),
+                onChanged: controller.setAnimationsEnabled,
               ),
             ],
           ),
@@ -256,9 +254,8 @@ class SettingsPage extends StatelessWidget {
                     values: StoryComplexity.values,
                     label: _complexityLabel,
                   );
-                  if (picked != null) {
+                  if (picked != null)
                     await controller.setStoryComplexity(picked);
-                  }
                 },
               ),
               ChoiceTile<String>(
@@ -270,9 +267,8 @@ class SettingsPage extends StatelessWidget {
                     context: context,
                     current: s.defaultLanguageCode,
                   );
-                  if (picked != null) {
+                  if (picked != null)
                     await controller.setDefaultLanguageCode(picked);
-                  }
                 },
               ),
               SettingsTile(
@@ -292,25 +288,25 @@ class SettingsPage extends StatelessWidget {
                 leading: const Icon(Icons.spatial_audio_off_outlined),
                 title: 'Voice narration',
                 value: s.voiceNarrationEnabled,
-                onChanged: (v) => controller.setVoiceNarrationEnabled(v),
+                onChanged: controller.setVoiceNarrationEnabled,
               ),
               SwitchTile(
                 leading: const Icon(Icons.music_note_outlined),
                 title: 'Background music',
                 value: s.backgroundMusicEnabled,
-                onChanged: (v) => controller.setBackgroundMusicEnabled(v),
+                onChanged: controller.setBackgroundMusicEnabled,
               ),
               SwitchTile(
                 leading: const Icon(Icons.graphic_eq_outlined),
                 title: 'Sound effects',
                 value: s.soundEffectsEnabled,
-                onChanged: (v) => controller.setSoundEffectsEnabled(v),
+                onChanged: controller.setSoundEffectsEnabled,
               ),
               SwitchTile(
                 leading: const Icon(Icons.play_circle_outline),
                 title: 'Auto-play narration',
                 value: s.autoPlayNarration,
-                onChanged: (v) => controller.setAutoPlayNarration(v),
+                onChanged: controller.setAutoPlayNarration,
               ),
             ],
           ),
@@ -323,20 +319,20 @@ class SettingsPage extends StatelessWidget {
                 title: 'Safe mode',
                 subtitle: 'Restricts sensitive content',
                 value: s.safeModeEnabled,
-                onChanged: (v) => controller.setSafeModeEnabled(v),
+                onChanged: controller.setSafeModeEnabled,
               ),
               SwitchTile(
                 leading: const Icon(Icons.nightlight_outlined),
                 title: 'Disable scary content',
                 value: s.disableScaryContent,
-                onChanged: (v) => controller.setDisableScaryContent(v),
+                onChanged: controller.setDisableScaryContent,
               ),
               SwitchTile(
                 leading: const Icon(Icons.lock_person_outlined),
                 title: 'Require parent confirmation',
                 subtitle: 'Before story generation',
                 value: s.requireParentConfirmation,
-                onChanged: (v) => controller.setRequireParentConfirmation(v),
+                onChanged: controller.setRequireParentConfirmation,
               ),
             ],
           ),
@@ -348,7 +344,7 @@ class SettingsPage extends StatelessWidget {
                 leading: const Icon(Icons.image_outlined),
                 title: 'Auto-generate illustrations',
                 value: s.autoIllustrations,
-                onChanged: (v) => controller.setAutoIllustrations(v),
+                onChanged: controller.setAutoIllustrations,
               ),
               ChoiceTile<CreativityLevel>(
                 leading: const Icon(Icons.auto_awesome_outlined),
@@ -370,31 +366,7 @@ class SettingsPage extends StatelessWidget {
                 leading: const Icon(Icons.save_outlined),
                 title: 'Remember preferences',
                 value: s.rememberPreferences,
-                onChanged: (v) => controller.setRememberPreferences(v),
-              ),
-            ],
-          ),
-
-          SettingsSection(
-            title: 'Account',
-            children: [
-              SettingsTile(
-                leading: const Icon(Icons.person_outline),
-                title: 'Login status',
-                subtitle: 'Guest (placeholder)',
-                onTap: () {},
-              ),
-              SettingsTile(
-                leading: const Icon(Icons.restore_outlined),
-                title: 'Restore purchases',
-                subtitle: 'Placeholder',
-                onTap: () {},
-              ),
-              SettingsTile(
-                leading: const Icon(Icons.logout_outlined),
-                title: 'Logout',
-                subtitle: 'Placeholder',
-                onTap: () {},
+                onChanged: controller.setRememberPreferences,
               ),
             ],
           ),
@@ -402,12 +374,6 @@ class SettingsPage extends StatelessWidget {
           SettingsSection(
             title: 'System',
             children: [
-              SettingsTile(
-                leading: const Icon(Icons.cleaning_services_outlined),
-                title: 'Clear cache',
-                subtitle: 'Placeholder',
-                onTap: () {},
-              ),
               SettingsTile(
                 leading: const Icon(Icons.restart_alt_outlined),
                 title: 'Reset settings',
@@ -432,28 +398,8 @@ class SettingsPage extends StatelessWidget {
                       ],
                     ),
                   );
-                  if (ok == true) {
-                    await controller.resetToDefaults();
-                  }
+                  if (ok == true) await controller.resetToDefaults();
                 },
-              ),
-              SettingsTile(
-                leading: const Icon(Icons.info_outline),
-                title: 'App version',
-                subtitle: '0.1.0 (placeholder)',
-                onTap: () {},
-              ),
-              SettingsTile(
-                leading: const Icon(Icons.privacy_tip_outlined),
-                title: 'Privacy policy',
-                subtitle: 'Placeholder',
-                onTap: () {},
-              ),
-              SettingsTile(
-                leading: const Icon(Icons.description_outlined),
-                title: 'Terms of service',
-                subtitle: 'Placeholder',
-                onTap: () {},
               ),
             ],
           ),

@@ -5,8 +5,8 @@ class SettingsScope extends InheritedNotifier<SettingsController> {
   const SettingsScope({
     super.key,
     required SettingsController controller,
-    required Widget child,
-  }) : super(notifier: controller, child: child);
+    required super.child,
+  }) : super(notifier: controller);
 
   static SettingsController of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<SettingsScope>();

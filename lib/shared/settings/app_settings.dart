@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
-
-enum AppThemeMode { system, light, dark }
+import 'package:flutter/material.dart';
 
 enum FontScale { small, medium, large }
 
@@ -14,14 +13,16 @@ enum CreativityLevel { low, normal, high }
 
 @immutable
 class AppSettings {
-  final AppThemeMode themeMode;
+  // NOTE: пока храним ThemeMode напрямую, чтобы не зависеть от твоего ThemeController API.
+  final ThemeMode themeMode;
+
   final FontScale fontScale;
   final bool animationsEnabled;
 
   final AgeGroup ageGroup;
   final StoryLength storyLength;
   final StoryComplexity storyComplexity;
-  final String defaultLanguageCode; // e.g. "en", "ru", "hy"
+  final String defaultLanguageCode;
 
   final bool voiceNarrationEnabled;
   final bool backgroundMusicEnabled;
@@ -57,7 +58,7 @@ class AppSettings {
   });
 
   factory AppSettings.defaults() => const AppSettings(
-    themeMode: AppThemeMode.system,
+    themeMode: ThemeMode.system,
     fontScale: FontScale.medium,
     animationsEnabled: true,
     ageGroup: AgeGroup.age3to5,
@@ -77,7 +78,7 @@ class AppSettings {
   );
 
   AppSettings copyWith({
-    AppThemeMode? themeMode,
+    ThemeMode? themeMode,
     FontScale? fontScale,
     bool? animationsEnabled,
     AgeGroup? ageGroup,

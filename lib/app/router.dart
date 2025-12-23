@@ -1,4 +1,3 @@
-// lib/app/router.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,26 +7,40 @@ import '../features/reader/reader_page.dart';
 import '../features/settings/settings_page.dart';
 import '../shared/models/story_setup.dart';
 
-final router = GoRouter(
-  initialLocation: '/',
-  routes: [
-    GoRoute(path: '/', builder: (context, state) => const HomePage()),
-    GoRoute(
-      path: '/setup',
-      builder: (context, state) => const StorySetupPage(),
-    ),
-    GoRoute(
-      path: '/reader',
-      builder: (context, state) {
-        final setup = state.extra as StorySetup?;
-        return ReaderPage(setup: setup);
-      },
-    ),
-    GoRoute(
-      path: '/settings',
-      builder: (context, state) => const SettingsPage(),
-    ),
-  ],
-  errorBuilder: (context, state) =>
-      Scaffold(body: Center(child: Text('Page Not Found: ${state.uri}'))),
-);
+GoRouter buildRouter() {
+  return GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(
+        path: '/',
+        pageBuilder: (context, state) => const MaterialPage(child: HomePage()),
+      ),
+      GoRoute(
+        path: '/setup',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: StorySetupPage()),
+      ),
+      GoRoute(
+        path: '/reader',
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+          final setup = extra is StorySetup ? extra : null;
+          return MaterialPage(child: ReaderPage(setup: setup));
+        },
+      ),
+      GoRoute(
+        path: '/settings',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: SettingsPage()),
+      ),
+    ],
+    errorPageBuilder: (context, state) {
+      return MaterialPage(
+        child: Scaffold(
+          appBar: AppBar(title: const Text('Not found')),
+          body: Center(child: Text(state.error.toString())),
+        ),
+      );
+    },
+  );
+}

@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
 import 'app_settings.dart';
 import 'settings_repository.dart';
 
@@ -27,7 +29,7 @@ class SettingsController extends ChangeNotifier {
   }
 
   // Appearance
-  Future<void> setThemeMode(AppThemeMode mode) =>
+  Future<void> setThemeMode(ThemeMode mode) =>
       _update(_settings.copyWith(themeMode: mode));
 
   Future<void> setFontScale(FontScale scale) =>
