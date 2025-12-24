@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../shared/extensions/theme_mode_extension.dart';
 import '../../shared/settings/app_settings.dart';
 import '../../shared/settings/settings_scope.dart';
 import '../../shared/settings/widgets/choice_tile.dart';
@@ -17,69 +18,20 @@ class SettingsPage extends StatelessWidget {
     'hy': 'Հայերեն',
   };
 
-  String _themeLabel(ThemeMode v) {
-    switch (v) {
-      case ThemeMode.system:
-        return 'System';
-      case ThemeMode.light:
-        return 'Light';
-      case ThemeMode.dark:
-        return 'Dark';
-    }
-  }
+  String _themeLabel(BuildContext context, ThemeMode v) => v.localized(context);
 
-  String _fontLabel(FontScale v) {
-    switch (v) {
-      case FontScale.small:
-        return 'Small';
-      case FontScale.medium:
-        return 'Medium';
-      case FontScale.large:
-        return 'Large';
-    }
-  }
+  String _fontLabel(BuildContext context, FontScale v) => v.localized(context);
 
-  String _ageLabel(AgeGroup v) {
-    switch (v) {
-      case AgeGroup.age3to5:
-        return '3–5';
-      case AgeGroup.age6to8:
-        return '6–8';
-      case AgeGroup.age9to12:
-        return '9–12';
-    }
-  }
+  String _ageLabel(BuildContext context, AgeGroup v) => v.localized(context);
 
-  String _lengthLabel(StoryLength v) {
-    switch (v) {
-      case StoryLength.short:
-        return 'Short';
-      case StoryLength.medium:
-        return 'Medium';
-      case StoryLength.long:
-        return 'Long';
-    }
-  }
+  String _lengthLabel(BuildContext context, StoryLength v) =>
+      v.localized(context);
 
-  String _complexityLabel(StoryComplexity v) {
-    switch (v) {
-      case StoryComplexity.simple:
-        return 'Simple';
-      case StoryComplexity.normal:
-        return 'Normal';
-    }
-  }
+  String _complexityLabel(BuildContext context, StoryComplexity v) =>
+      v.localized(context);
 
-  String _creativityLabel(CreativityLevel v) {
-    switch (v) {
-      case CreativityLevel.low:
-        return 'Low';
-      case CreativityLevel.normal:
-        return 'Normal';
-      case CreativityLevel.high:
-        return 'High';
-    }
-  }
+  String _creativityLabel(BuildContext context, CreativityLevel v) =>
+      v.localized(context);
 
   Future<T?> _pickEnum<T>({
     required BuildContext context,
@@ -182,14 +134,14 @@ class SettingsPage extends StatelessWidget {
               ChoiceTile<ThemeMode>(
                 leading: const Icon(Icons.brightness_6_outlined),
                 title: titleTheme,
-                valueLabel: _themeLabel(s.themeMode),
+                valueLabel: _themeLabel(context, s.themeMode),
                 onTap: () async {
                   final picked = await _pickEnum<ThemeMode>(
                     context: context,
                     title: titleTheme,
                     current: s.themeMode,
                     values: ThemeMode.values,
-                    label: _themeLabel,
+                    label: (v) => _themeLabel(context, v),
                   );
                   if (picked != null) {
                     await controller.setThemeMode(picked);
@@ -199,14 +151,14 @@ class SettingsPage extends StatelessWidget {
               ChoiceTile<FontScale>(
                 leading: const Icon(Icons.text_fields),
                 title: titleFontSize,
-                valueLabel: _fontLabel(s.fontScale),
+                valueLabel: _fontLabel(context, s.fontScale),
                 onTap: () async {
                   final picked = await _pickEnum<FontScale>(
                     context: context,
                     title: titleFontSize,
                     current: s.fontScale,
                     values: FontScale.values,
-                    label: _fontLabel,
+                    label: (v) => _fontLabel(context, v),
                   );
                   if (picked != null) {
                     await controller.setFontScale(picked);
@@ -216,7 +168,7 @@ class SettingsPage extends StatelessWidget {
               SwitchTile(
                 leading: const Icon(Icons.animation_outlined),
                 title: titleAnimations,
-                subtitle: 'Reduce motion if disabled',
+                subtitle: t?.reduceMotion ?? 'Reduce motion if disabled',
                 value: s.animationsEnabled,
                 onChanged: controller.setAnimationsEnabled,
               ),
@@ -228,15 +180,15 @@ class SettingsPage extends StatelessWidget {
             children: [
               ChoiceTile<AgeGroup>(
                 leading: const Icon(Icons.cake_outlined),
-                title: 'Age group',
-                valueLabel: _ageLabel(s.ageGroup),
+                title: t?.ageGroup ?? 'Age group',
+                valueLabel: _ageLabel(context, s.ageGroup),
                 onTap: () async {
                   final picked = await _pickEnum<AgeGroup>(
                     context: context,
-                    title: 'Age group',
+                    title: t?.ageGroup ?? 'Age group',
                     current: s.ageGroup,
                     values: AgeGroup.values,
-                    label: _ageLabel,
+                    label: (v) => _ageLabel(context, v),
                   );
                   if (picked != null) {
                     await controller.setAgeGroup(picked);
@@ -245,15 +197,15 @@ class SettingsPage extends StatelessWidget {
               ),
               ChoiceTile<StoryLength>(
                 leading: const Icon(Icons.subject_outlined),
-                title: 'Story length',
-                valueLabel: _lengthLabel(s.storyLength),
+                title: t?.storyLength ?? 'Story length',
+                valueLabel: _lengthLabel(context, s.storyLength),
                 onTap: () async {
                   final picked = await _pickEnum<StoryLength>(
                     context: context,
-                    title: 'Story length',
+                    title: t?.storyLength ?? 'Story length',
                     current: s.storyLength,
                     values: StoryLength.values,
-                    label: _lengthLabel,
+                    label: (v) => _lengthLabel(context, v),
                   );
                   if (picked != null) {
                     await controller.setStoryLength(picked);
@@ -262,15 +214,15 @@ class SettingsPage extends StatelessWidget {
               ),
               ChoiceTile<StoryComplexity>(
                 leading: const Icon(Icons.tune_outlined),
-                title: 'Complexity',
-                valueLabel: _complexityLabel(s.storyComplexity),
+                title: t?.complexity ?? 'Complexity',
+                valueLabel: _complexityLabel(context, s.storyComplexity),
                 onTap: () async {
                   final picked = await _pickEnum<StoryComplexity>(
                     context: context,
-                    title: 'Complexity',
+                    title: t?.complexity ?? 'Complexity',
                     current: s.storyComplexity,
                     values: StoryComplexity.values,
-                    label: _complexityLabel,
+                    label: (v) => _complexityLabel(context, v),
                   );
                   if (picked != null) {
                     await controller.setStoryComplexity(picked);
@@ -294,8 +246,8 @@ class SettingsPage extends StatelessWidget {
               ),
               SettingsTile(
                 leading: const Icon(Icons.record_voice_over_outlined),
-                title: 'Default narration voice',
-                subtitle: 'Coming soon',
+                title: t?.defaultNarrationVoice ?? 'Default narration voice',
+                subtitle: t?.comingSoon ?? 'Coming soon',
                 trailing: const Icon(Icons.lock_outline),
                 onTap: () {},
               ),
@@ -303,29 +255,29 @@ class SettingsPage extends StatelessWidget {
           ),
 
           SettingsSection(
-            title: 'Audio',
+            title: t?.audio ?? 'Audio',
             children: [
               SwitchTile(
                 leading: const Icon(Icons.spatial_audio_off_outlined),
-                title: 'Voice narration',
+                title: t?.voiceNarration ?? 'Voice narration',
                 value: s.voiceNarrationEnabled,
                 onChanged: controller.setVoiceNarrationEnabled,
               ),
               SwitchTile(
                 leading: const Icon(Icons.music_note_outlined),
-                title: 'Background music',
+                title: t?.backgroundMusic ?? 'Background music',
                 value: s.backgroundMusicEnabled,
                 onChanged: controller.setBackgroundMusicEnabled,
               ),
               SwitchTile(
                 leading: const Icon(Icons.graphic_eq_outlined),
-                title: 'Sound effects',
+                title: t?.soundEffects ?? 'Sound effects',
                 value: s.soundEffectsEnabled,
                 onChanged: controller.setSoundEffectsEnabled,
               ),
               SwitchTile(
                 leading: const Icon(Icons.play_circle_outline),
-                title: 'Auto-play narration',
+                title: t?.autoPlayNarration ?? 'Auto-play narration',
                 value: s.autoPlayNarration,
                 onChanged: controller.setAutoPlayNarration,
               ),
@@ -333,25 +285,29 @@ class SettingsPage extends StatelessWidget {
           ),
 
           SettingsSection(
-            title: 'Parental & Safety',
+            title: t?.parentalSafety ?? 'Parental & Safety',
             children: [
               SwitchTile(
                 leading: const Icon(Icons.verified_user_outlined),
-                title: 'Safe mode',
-                subtitle: 'Restricts sensitive content',
+                title: t?.safeMode ?? 'Safe mode',
+                subtitle:
+                    t?.restrictsSensitiveContent ??
+                    'Restricts sensitive content',
                 value: s.safeModeEnabled,
                 onChanged: controller.setSafeModeEnabled,
               ),
               SwitchTile(
                 leading: const Icon(Icons.nightlight_outlined),
-                title: 'Disable scary content',
+                title: t?.disableScaryContent ?? 'Disable scary content',
                 value: s.disableScaryContent,
                 onChanged: controller.setDisableScaryContent,
               ),
               SwitchTile(
                 leading: const Icon(Icons.lock_person_outlined),
-                title: 'Require parent confirmation',
-                subtitle: 'Before story generation',
+                title:
+                    t?.requireParentConfirmation ??
+                    'Require parent confirmation',
+                subtitle: t?.beforeStoryGeneration ?? 'Before story generation',
                 value: s.requireParentConfirmation,
                 onChanged: controller.setRequireParentConfirmation,
               ),
@@ -359,25 +315,27 @@ class SettingsPage extends StatelessWidget {
           ),
 
           SettingsSection(
-            title: 'AI & Generation',
+            title: t?.aiGeneration ?? 'AI & Generation',
             children: [
               SwitchTile(
                 leading: const Icon(Icons.image_outlined),
-                title: 'Auto-generate illustrations',
+                title:
+                    t?.autoGenerateIllustrations ??
+                    'Auto-generate illustrations',
                 value: s.autoIllustrations,
                 onChanged: controller.setAutoIllustrations,
               ),
               ChoiceTile<CreativityLevel>(
                 leading: const Icon(Icons.auto_awesome_outlined),
-                title: 'Creativity level',
-                valueLabel: _creativityLabel(s.creativityLevel),
+                title: t?.creativityLevel ?? 'Creativity level',
+                valueLabel: _creativityLabel(context, s.creativityLevel),
                 onTap: () async {
                   final picked = await _pickEnum<CreativityLevel>(
                     context: context,
-                    title: 'Creativity level',
+                    title: t?.creativityLevel ?? 'Creativity level',
                     current: s.creativityLevel,
                     values: CreativityLevel.values,
-                    label: _creativityLabel,
+                    label: (v) => _creativityLabel(context, v),
                   );
                   if (picked != null) {
                     await controller.setCreativityLevel(picked);
@@ -386,7 +344,7 @@ class SettingsPage extends StatelessWidget {
               ),
               SwitchTile(
                 leading: const Icon(Icons.save_outlined),
-                title: 'Remember preferences',
+                title: t?.rememberPreferences ?? 'Remember preferences',
                 value: s.rememberPreferences,
                 onChanged: controller.setRememberPreferences,
               ),
@@ -394,28 +352,31 @@ class SettingsPage extends StatelessWidget {
           ),
 
           SettingsSection(
-            title: 'System',
+            title: t?.system ?? 'System',
             children: [
               SettingsTile(
                 leading: const Icon(Icons.restart_alt_outlined),
-                title: 'Reset settings',
-                subtitle: 'Back to defaults',
+                title: t?.resetSettings ?? 'Reset settings',
+                subtitle: t?.backToDefaults ?? 'Back to defaults',
                 onTap: () async {
                   final ok = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      title: const Text('Reset settings?'),
-                      content: const Text(
-                        'This will restore all settings to default values.',
+                      title: Text(
+                        t?.resetSettingsQuestion ?? 'Reset settings?',
+                      ),
+                      content: Text(
+                        t?.restoreDefaultsMessage ??
+                            'This will restore all settings to default values.',
                       ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Cancel'),
+                          child: Text(t?.cancel ?? 'Cancel'),
                         ),
                         FilledButton(
                           onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Reset'),
+                          child: Text(t?.reset ?? 'Reset'),
                         ),
                       ],
                     ),

@@ -1,15 +1,84 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../../l10n/app_localizations.dart';
 
 enum FontScale { small, medium, large }
 
+extension FontScaleExtension on FontScale {
+  String localized(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    switch (this) {
+      case FontScale.small:
+        return t.fontSmall;
+      case FontScale.medium:
+        return t.fontMedium;
+      case FontScale.large:
+        return t.fontLarge;
+    }
+  }
+}
+
 enum AgeGroup { age3to5, age6to8, age9to12 }
+
+extension AgeGroupExtension on AgeGroup {
+  String localized(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    switch (this) {
+      case AgeGroup.age3to5:
+        return t.age3to5;
+      case AgeGroup.age6to8:
+        return t.age6to8;
+      case AgeGroup.age9to12:
+        return t.age9to12;
+    }
+  }
+}
 
 enum StoryLength { short, medium, long }
 
+extension StoryLengthExtension on StoryLength {
+  String localized(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    switch (this) {
+      case StoryLength.short:
+        return t.storyShort;
+      case StoryLength.medium:
+        return t.storyMedium;
+      case StoryLength.long:
+        return t.storyLong;
+    }
+  }
+}
+
 enum StoryComplexity { simple, normal }
 
+extension StoryComplexityExtension on StoryComplexity {
+  String localized(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    switch (this) {
+      case StoryComplexity.simple:
+        return t.complexitySimple;
+      case StoryComplexity.normal:
+        return t.complexityNormal;
+    }
+  }
+}
+
 enum CreativityLevel { low, normal, high }
+
+extension CreativityLevelExtension on CreativityLevel {
+  String localized(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    switch (this) {
+      case CreativityLevel.low:
+        return t.creativityLow;
+      case CreativityLevel.normal:
+        return t.creativityNormal;
+      case CreativityLevel.high:
+        return t.creativityHigh;
+    }
+  }
+}
 
 @immutable
 class AppSettings {

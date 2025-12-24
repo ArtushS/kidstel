@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../features/home/home_page.dart';
 import '../features/story_setup/story_setup_page.dart';
 import '../features/reader/reader_page.dart';
@@ -37,7 +38,7 @@ GoRouter buildRouter() {
     errorPageBuilder: (context, state) {
       return MaterialPage(
         child: Scaffold(
-          appBar: AppBar(title: const Text('Not found')),
+          appBar: AppBar(title: Text(AppLocalizations.of(context)!.notFound)),
           body: Center(child: Text(state.error.toString())),
         ),
       );

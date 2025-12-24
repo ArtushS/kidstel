@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../shared/models/story_setup.dart';
 
 class ReaderPage extends StatelessWidget {
@@ -10,6 +11,7 @@ class ReaderPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = setup;
+    final t = AppLocalizations.of(context)!;
 
     final mockText = (s == null)
         ? null
@@ -18,7 +20,7 @@ class ReaderPage extends StatelessWidget {
               'Скоро мы подключим генерацию через сервер и появятся развилки.';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Чтение')),
+      appBar: AppBar(title: Text(t.reading)),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: (s == null)
@@ -26,44 +28,32 @@ class ReaderPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Пока нет открытой истории',
+                    t.noStoryYet,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Нажми "Create Story" на главной странице, '
-                    'чтобы создать новую сказку.',
-                  ),
+                  Text(t.noStoryMessage),
                 ],
               )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Глава 1',
+                    t.chapter1,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 12),
                   Text(mockText!, style: Theme.of(context).textTheme.bodyLarge),
                   const SizedBox(height: 24),
-                  const Text('Выбор (пока мок):'),
+                  Text(t.choicePlaceholder),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      OutlinedButton(
-                        onPressed: () {},
-                        child: const Text('Пойти налево'),
-                      ),
-                      OutlinedButton(
-                        onPressed: () {},
-                        child: const Text('Пойти направо'),
-                      ),
-                      OutlinedButton(
-                        onPressed: () {},
-                        child: const Text('Остаться'),
-                      ),
+                      OutlinedButton(onPressed: () {}, child: Text(t.goLeft)),
+                      OutlinedButton(onPressed: () {}, child: Text(t.goRight)),
+                      OutlinedButton(onPressed: () {}, child: Text(t.stay)),
                     ],
                   ),
                 ],

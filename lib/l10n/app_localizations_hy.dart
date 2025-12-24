@@ -9,6 +9,33 @@ class AppLocalizationsHy extends AppLocalizations {
   AppLocalizationsHy([String locale = 'hy']) : super(locale);
 
   @override
+  String get createStory => 'Ստեղծել հեքիաթ';
+
+  @override
+  String get myStories => 'Իմ հեքիաթները';
+
+  @override
+  String get hero => 'Հերոս';
+
+  @override
+  String get location => 'Վայր';
+
+  @override
+  String get swipeToChoose => 'Սահեցրու ընտրելու համար';
+
+  @override
+  String get heroBear => 'Արջ';
+
+  @override
+  String get heroCat => 'Կատու';
+
+  @override
+  String get heroDog => 'Շուն';
+
+  @override
+  String get generate => 'Ստեղծել';
+
+  @override
   String get settings => 'Կարգավորումներ';
 
   @override
@@ -24,13 +51,147 @@ class AppLocalizationsHy extends AppLocalizations {
   String get animations => 'Անիմացիաներ';
 
   @override
+  String get reduceMotion => 'Նվազեցնել շարժումը եթե անջատված է';
+
+  @override
   String get storyPreferences => 'Պատմության նախընտրություններ';
 
   @override
   String get language => 'Լեզու';
 
   @override
-  String get generate => 'Ստեղծել';
+  String get ageGroup => 'Տարիքային խումբ';
+
+  @override
+  String get storyLength => 'Պատմության երկարությունը';
+
+  @override
+  String get complexity => 'Բարդություն';
+
+  @override
+  String get defaultNarrationVoice => 'Հիմնական պատմող ձայն';
+
+  @override
+  String get comingSoon => 'Շուտով';
+
+  @override
+  String get audio => 'Աուդիո';
+
+  @override
+  String get voiceNarration => 'Ձայնային պատում';
+
+  @override
+  String get backgroundMusic => 'Ֆոնային երաժշտություն';
+
+  @override
+  String get soundEffects => 'Ձայնային էֆեկտներ';
+
+  @override
+  String get autoPlayNarration => 'Ավտո-նվագարկել պատումը';
+
+  @override
+  String get parentalSafety => 'Ծնողական անվտանգություն';
+
+  @override
+  String get safeMode => 'Անվտանգ ռեժիմ';
+
+  @override
+  String get restrictsSensitiveContent =>
+      'Սահմանափակում է զգայուն բովանդակությունը';
+
+  @override
+  String get disableScaryContent => 'Անջատել սարսափելի բովանդակությունը';
+
+  @override
+  String get requireParentConfirmation => 'Պահանջել ծնողի հաստատումը';
+
+  @override
+  String get beforeStoryGeneration => 'Նախքան պատմության ստեղծումը';
+
+  @override
+  String get aiGeneration => 'AI & Ստեղծում';
+
+  @override
+  String get autoGenerateIllustrations => 'Ավտո-ստեղծել նկարազարդումներ';
+
+  @override
+  String get creativityLevel => 'Ստեղծագործության մակարդակ';
+
+  @override
+  String get rememberPreferences => 'Հիշել նախընտրությունները';
+
+  @override
+  String get system => 'Համակարգ';
+
+  @override
+  String get resetSettings => 'Վերականգնել կարգավորումները';
+
+  @override
+  String get backToDefaults => 'Վերադառնալ սկզբնական կարգավորումներին';
+
+  @override
+  String get resetSettingsQuestion => 'Վերականգնե՞լ կարգավորումները';
+
+  @override
+  String get restoreDefaultsMessage =>
+      'Սա վերականգնում է բոլոր կարգավորումները սկզբնական արժեքներին:';
+
+  @override
+  String get cancel => 'Չեղարկել';
+
+  @override
+  String get reset => 'Վերականգնել';
+
+  @override
+  String get themeSystem => 'Համակարգ';
+
+  @override
+  String get themeLight => 'Լուսավոր';
+
+  @override
+  String get themeDark => 'Մութ';
+
+  @override
+  String get fontSmall => 'Փոքր';
+
+  @override
+  String get fontMedium => 'Միջին';
+
+  @override
+  String get fontLarge => 'Մեծ';
+
+  @override
+  String get age3to5 => '3–5';
+
+  @override
+  String get age6to8 => '6–8';
+
+  @override
+  String get age9to12 => '9–12';
+
+  @override
+  String get storyShort => 'Կարճ';
+
+  @override
+  String get storyMedium => 'Միջին';
+
+  @override
+  String get storyLong => 'Երկար';
+
+  @override
+  String get complexitySimple => 'Պարզ';
+
+  @override
+  String get complexityNormal => 'Սովորական';
+
+  @override
+  String get creativityLow => 'Ցածր';
+
+  @override
+  String get creativityNormal => 'Սովորական';
+
+  @override
+  String get creativityHigh => 'Բարձր';
 
   @override
   String get createNewStory => 'Ստեղծել նոր հեքիաթ';
@@ -40,4 +201,101 @@ class AppLocalizationsHy extends AppLocalizations {
 
   @override
   String get typeYourIdea => 'Գրիր գաղափարդ կամ օգտագործիր ձայնը…';
+
+  @override
+  String get account => 'Հաշիվ';
+
+  @override
+  String get storyGeneratedFromIdea => 'Պատմությունը կստեղծվի գաղափարից';
+
+  @override
+  String get heroFox => 'Աղվես';
+
+  @override
+  String get heroRabbit => 'Նապաստակ';
+
+  @override
+  String get heroDice => 'Զառ';
+
+  @override
+  String get heroRandom => 'Պատահական';
+
+  @override
+  String get locationCastle => 'Ամրոց';
+
+  @override
+  String get locationCozyCottage => 'Հարմարավետ տնակ';
+
+  @override
+  String get locationFloatingIsland => 'Լողացող կղզի';
+
+  @override
+  String get locationSnowCastle => 'Ձյունե ամրոց';
+
+  @override
+  String get locationUnderwater => 'Ստորջրյա';
+
+  @override
+  String get locationRandom => 'Պատահական';
+
+  @override
+  String get storyType => 'Պատմության տեսակ';
+
+  @override
+  String get typeFriendly => 'Ընկերական';
+
+  @override
+  String get typeAdventure => 'Արկածային';
+
+  @override
+  String get typeMagic => 'Կախարդական';
+
+  @override
+  String get typeFunny => 'Զվարճալի';
+
+  @override
+  String get typeRomantic => 'Ռոմանտիկ';
+
+  @override
+  String get toggleDarkMode => 'Փոխել մութ ռեժիմը';
+
+  @override
+  String get menu => 'Ընտրացանկ';
+
+  @override
+  String get voiceInput => 'Ձայնային ներածում';
+
+  @override
+  String get generateRequestMVP => 'Ստեղծման հարցում (MVP)';
+
+  @override
+  String get ok => 'Լավ';
+
+  @override
+  String get reading => 'Ընթերցում';
+
+  @override
+  String get noStoryYet => 'Դեռևս պատմություն չկա';
+
+  @override
+  String get noStoryMessage =>
+      'Սեղմիր \"Ստեղծել հեքիաթ\" գլխավոր էջում՝ նոր հեքիաթ ստեղծելու համար:';
+
+  @override
+  String get chapter1 => 'Գլուխ 1';
+
+  @override
+  String get choicePlaceholder => 'Ընտրություն (ժամանակավոր):';
+
+  @override
+  String get goLeft => 'Գնալ ձախ';
+
+  @override
+  String get goRight => 'Գնալ աջ';
+
+  @override
+  String get stay => 'Մնալ';
+
+  @override
+  String get notFound => 'Չի գտնվել';
 }

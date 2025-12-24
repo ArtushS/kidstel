@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../l10n/app_localizations.dart';
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     const bg = Color(0xFFF6F0E6);
+    final t = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: bg,
@@ -17,13 +20,13 @@ class HomePage extends StatelessWidget {
             children: [
               _NeumorphicCircleButton(
                 icon: Icons.add,
-                label: 'Create Story',
+                label: t.createStory,
                 onTap: () => context.go('/setup'),
               ),
               const SizedBox(height: 28),
               _NeumorphicCircleButton(
                 icon: Icons.menu_book_outlined,
-                label: 'My Stories',
+                label: t.myStories,
                 onTap: () => context.go('/reader'),
               ),
             ],

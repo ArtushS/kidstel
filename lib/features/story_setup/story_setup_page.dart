@@ -19,11 +19,14 @@ class _StorySetupPageState extends State<StorySetupPage> {
   final _ideaFocus = FocusNode();
 
   Future<void> _warmUpIcons() async {
+    final heroes = _getHeroes(context);
+    final locations = _getLocations(context);
+
     final paths = <String>[
-      ..._heroes
+      ...heroes
           .where((e) => e.storagePath.isNotEmpty)
           .map((e) => e.storagePath),
-      ..._locations
+      ...locations
           .where((e) => e.storagePath.isNotEmpty)
           .map((e) => e.storagePath),
     ];
@@ -42,74 +45,80 @@ class _StorySetupPageState extends State<StorySetupPage> {
   bool _isIdeaMode = false;
   bool _isListening = false;
 
-  // Heroes (Random last)
-  final List<_PickItem> _heroes = const [
-    _PickItem(
-      id: 'hero_bear',
-      title: 'Bear',
-      storagePath: 'heroes_icons/hero_bear.png',
-    ),
-    _PickItem(
-      id: 'hero_cat',
-      title: 'Cat',
-      storagePath: 'heroes_icons/hero_cat.png',
-    ),
-    _PickItem(
-      id: 'hero_fox',
-      title: 'Fox',
-      storagePath: 'heroes_icons/hero_fox.png',
-    ),
-    _PickItem(
-      id: 'hero_rabbit',
-      title: 'Rabbit',
-      storagePath: 'heroes_icons/hero_rabbit.png',
-    ),
-    _PickItem(
-      id: 'hero_dice',
-      title: 'Dice',
-      storagePath: 'heroes_icons/hero_dice.png',
-    ),
-    _PickItem(id: 'hero_random', title: 'Random', storagePath: ''), // last
-  ];
+  List<_PickItem> _getHeroes(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    return [
+      _PickItem(
+        id: 'hero_bear',
+        title: t.heroBear,
+        storagePath: 'heroes_icons/hero_bear.png',
+      ),
+      _PickItem(
+        id: 'hero_cat',
+        title: t.heroCat,
+        storagePath: 'heroes_icons/hero_cat.png',
+      ),
+      _PickItem(
+        id: 'hero_fox',
+        title: t.heroFox,
+        storagePath: 'heroes_icons/hero_fox.png',
+      ),
+      _PickItem(
+        id: 'hero_rabbit',
+        title: t.heroRabbit,
+        storagePath: 'heroes_icons/hero_rabbit.png',
+      ),
+      _PickItem(
+        id: 'hero_dice',
+        title: t.heroDice,
+        storagePath: 'heroes_icons/hero_dice.png',
+      ),
+      _PickItem(id: 'hero_random', title: t.heroRandom, storagePath: ''),
+    ];
+  }
 
-  // Locations (Random last)
-  final List<_PickItem> _locations = const [
-    _PickItem(
-      id: 'castel',
-      title: 'Castle',
-      storagePath: 'location_icons/castel.png',
-    ),
-    _PickItem(
-      id: 'cozy',
-      title: 'Cozy cottage',
-      storagePath: 'location_icons/cozy_cottage_nest.png',
-    ),
-    _PickItem(
-      id: 'island',
-      title: 'Floating island',
-      storagePath: 'location_icons/floating_island_i.png',
-    ),
-    _PickItem(
-      id: 'snow_castel',
-      title: 'Snow castle',
-      storagePath: 'location_icons/snhow_castel.png',
-    ),
-    _PickItem(
-      id: 'underwater',
-      title: 'Underwater',
-      storagePath: 'location_icons/underwater_kingdom_i.png',
-    ),
-    _PickItem(id: 'loc_random', title: 'Random', storagePath: ''), // last
-  ];
+  List<_PickItem> _getLocations(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    return [
+      _PickItem(
+        id: 'castel',
+        title: t.locationCastle,
+        storagePath: 'location_icons/castel.png',
+      ),
+      _PickItem(
+        id: 'cozy',
+        title: t.locationCozyCottage,
+        storagePath: 'location_icons/cozy_cottage_nest.png',
+      ),
+      _PickItem(
+        id: 'island',
+        title: t.locationFloatingIsland,
+        storagePath: 'location_icons/floating_island_i.png',
+      ),
+      _PickItem(
+        id: 'snow_castel',
+        title: t.locationSnowCastle,
+        storagePath: 'location_icons/snhow_castel.png',
+      ),
+      _PickItem(
+        id: 'underwater',
+        title: t.locationUnderwater,
+        storagePath: 'location_icons/underwater_kingdom_i.png',
+      ),
+      _PickItem(id: 'loc_random', title: t.locationRandom, storagePath: ''),
+    ];
+  }
 
-  // Types (text-only for now)
-  final List<_PickItem> _types = const [
-    _PickItem(id: 'type_1', title: 'Friendly', storagePath: ''),
-    _PickItem(id: 'type_2', title: 'Adventure', storagePath: ''),
-    _PickItem(id: 'type_3', title: 'Magic', storagePath: ''),
-    _PickItem(id: 'type_4', title: 'Funny', storagePath: ''),
-    _PickItem(id: 'type_5', title: 'Romantic', storagePath: ''),
-  ];
+  List<_PickItem> _getTypes(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    return [
+      _PickItem(id: 'type_1', title: t.typeFriendly, storagePath: ''),
+      _PickItem(id: 'type_2', title: t.typeAdventure, storagePath: ''),
+      _PickItem(id: 'type_3', title: t.typeMagic, storagePath: ''),
+      _PickItem(id: 'type_4', title: t.typeFunny, storagePath: ''),
+      _PickItem(id: 'type_5', title: t.typeRomantic, storagePath: ''),
+    ];
+  }
 
   int _heroIndex = 0;
   int _locIndex = 0;
@@ -186,7 +195,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
           children: [
             ListTile(
               leading: const Icon(Icons.person_outline_rounded),
-              title: const Text('Account'),
+              title: Text(AppLocalizations.of(context)!.account),
               onTap: () {
                 Navigator.pop(context);
                 // TODO: account page later
@@ -195,7 +204,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
             ),
             ListTile(
               leading: const Icon(Icons.settings_outlined),
-              title: const Text('Settings'),
+              title: Text(AppLocalizations.of(context)!.settings),
               onTap: () {
                 Navigator.pop(context);
                 context.push('/settings'); // push, not go
@@ -207,10 +216,13 @@ class _StorySetupPageState extends State<StorySetupPage> {
     );
   }
 
-  bool get _canGenerate {
+  bool _canGenerate(BuildContext context) {
     final hasIdea = _ideaCtrl.text.trim().isNotEmpty;
+    final heroes = _getHeroes(context);
+    final locations = _getLocations(context);
+    final types = _getTypes(context);
     final hasPicks =
-        _heroes.isNotEmpty && _locations.isNotEmpty && _types.isNotEmpty;
+        heroes.isNotEmpty && locations.isNotEmpty && types.isNotEmpty;
     return hasIdea || hasPicks;
   }
 
@@ -224,17 +236,22 @@ class _StorySetupPageState extends State<StorySetupPage> {
     return pool[r.nextInt(pool.length)];
   }
 
-  Future<void> _onGenerate() async {
-    if (!_canGenerate) return;
+  Future<void> _onGenerate(BuildContext context) async {
+    if (!_canGenerate(context)) return;
 
+    final t = AppLocalizations.of(context)!;
     final idea = _ideaCtrl.text.trim();
 
-    final rawHero = _heroes[_heroIndex];
-    final rawLoc = _locations[_locIndex];
-    final rawType = _types[_typeIndex];
+    final heroes = _getHeroes(context);
+    final locations = _getLocations(context);
+    final types = _getTypes(context);
 
-    final hero = _resolveRandomIfNeeded(rawHero, _heroes);
-    final loc = _resolveRandomIfNeeded(rawLoc, _locations);
+    final rawHero = heroes[_heroIndex];
+    final rawLoc = locations[_locIndex];
+    final rawType = types[_typeIndex];
+
+    final hero = _resolveRandomIfNeeded(rawHero, heroes);
+    final loc = _resolveRandomIfNeeded(rawLoc, locations);
     final type = rawType;
 
     final summary = (idea.isNotEmpty)
@@ -245,12 +262,12 @@ class _StorySetupPageState extends State<StorySetupPage> {
     await showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Generate request (MVP)'),
+        title: Text(t.generateRequestMVP),
         content: Text(summary),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: Text(t.ok),
           ),
         ],
       ),
@@ -273,9 +290,13 @@ class _StorySetupPageState extends State<StorySetupPage> {
     final textPrimary = isDark ? Colors.white : Colors.black87;
     final textSecondary = isDark ? Colors.white70 : Colors.black54;
 
-    final hero = _heroes[_heroIndex];
-    final loc = _locations[_locIndex];
-    final type = _types[_typeIndex];
+    final heroes = _getHeroes(context);
+    final locations = _getLocations(context);
+    final types = _getTypes(context);
+
+    final hero = heroes[_heroIndex];
+    final loc = locations[_locIndex];
+    final type = types[_typeIndex];
 
     return Scaffold(
       body: SafeArea(
@@ -314,7 +335,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
                               key: const ValueKey('idea-msg'),
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               child: Text(
-                                'Story will be generated from your idea',
+                                t.storyGeneratedFromIdea,
                                 style: TextStyle(
                                   color: textSecondary,
                                   fontStyle: FontStyle.italic,
@@ -338,10 +359,10 @@ class _StorySetupPageState extends State<StorySetupPage> {
                         child: Column(
                           children: [
                             _CarouselSection(
-                              title: 'Hero',
-                              subtitle: 'Swipe to choose',
+                              title: t.hero,
+                              subtitle: t.swipeToChoose,
                               height: 240,
-                              items: _heroes,
+                              items: heroes,
                               initialPage: _heroIndex,
                               onPageChanged: (i) =>
                                   setState(() => _heroIndex = i),
@@ -349,10 +370,10 @@ class _StorySetupPageState extends State<StorySetupPage> {
                             ),
                             const SizedBox(height: 16),
                             _CarouselSection(
-                              title: 'Location',
-                              subtitle: 'Swipe to choose',
+                              title: t.location,
+                              subtitle: t.swipeToChoose,
                               height: 240,
-                              items: _locations,
+                              items: locations,
                               initialPage: _locIndex,
                               onPageChanged: (i) =>
                                   setState(() => _locIndex = i),
@@ -360,10 +381,10 @@ class _StorySetupPageState extends State<StorySetupPage> {
                             ),
                             const SizedBox(height: 16),
                             _CarouselSection(
-                              title: 'Story Type',
-                              subtitle: 'Swipe to choose',
+                              title: t.storyType,
+                              subtitle: t.swipeToChoose,
                               height: 240,
-                              items: _types,
+                              items: types,
                               initialPage: _typeIndex,
                               onPageChanged: (i) =>
                                   setState(() => _typeIndex = i),
@@ -379,8 +400,8 @@ class _StorySetupPageState extends State<StorySetupPage> {
               ),
             ),
             _BottomBar(
-              enabled: _canGenerate,
-              onGenerate: _onGenerate,
+              enabled: _canGenerate(context),
+              onGenerate: () => _onGenerate(context),
               label: t.generate,
             ),
           ],
@@ -434,7 +455,7 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Toggle dark mode',
+            tooltip: AppLocalizations.of(context)!.toggleDarkMode,
             onPressed: onToggleDark,
             icon: Icon(
               isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
@@ -442,7 +463,7 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Menu',
+            tooltip: AppLocalizations.of(context)!.menu,
             onPressed: onMenu,
             icon: Icon(Icons.menu_rounded, color: iconColor),
           ),
@@ -527,7 +548,7 @@ class _IdeaField extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Voice input',
+            tooltip: AppLocalizations.of(context)!.voiceInput,
             onPressed: onMicTap,
             icon: Icon(
               isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
