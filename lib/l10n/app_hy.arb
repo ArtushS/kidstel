@@ -1,0 +1,14 @@
+{
+  "@@locale": "hy",
+  "settings": "Կարգավորումներ",
+  "appearance": "Տեսք",
+  "theme": "Թեմա",
+  "fontSize": "Տառաչափ",
+  "animations": "Անիմացիաներ",
+  "storyPreferences": "Պատմության նախընտրություններ",
+  "language": "Լեզու",
+  "generate": "Ստեղծել",
+  "createNewStory": "Ստեղծել նոր հեքիաթ",
+  "describeYourIdea": "Նկարագրիր գաղափարդ",
+  "typeYourIdea": "Գրիր գաղափարդ կամ օգտագործիր ձայնը…"
+}

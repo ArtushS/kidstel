@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../shared/settings/app_settings.dart';
 import '../../shared/settings/settings_scope.dart';
-import '../../shared/settings/widgets/settings_section.dart';
-import '../../shared/settings/widgets/switch_tile.dart';
 import '../../shared/settings/widgets/choice_tile.dart';
+import '../../shared/settings/widgets/settings_section.dart';
 import '../../shared/settings/widgets/settings_tile.dart';
+import '../../shared/settings/widgets/switch_tile.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   static const _languages = <String, String>{
     'en': 'English',
-    'ru': 'Russian',
-    'hy': 'Armenian',
+    'ru': 'Русский',
+    'hy': 'Հայերեն',
   };
 
   String _themeLabel(ThemeMode v) {
@@ -117,6 +118,7 @@ class SettingsPage extends StatelessWidget {
 
   Future<String?> _pickLanguage({
     required BuildContext context,
+    required String title,
     required String current,
   }) {
     return showModalBottomSheet<String>(
@@ -128,10 +130,7 @@ class SettingsPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: Text(
-                  'Language',
-                  style: Theme.of(ctx).textTheme.titleMedium,
-                ),
+                title: Text(title, style: Theme.of(ctx).textTheme.titleMedium),
               ),
               const Divider(height: 1),
               ..._languages.entries.map((e) {
@@ -162,46 +161,61 @@ class SettingsPage extends StatelessWidget {
     final langLabel =
         _languages[s.defaultLanguageCode] ?? s.defaultLanguageCode;
 
+    final t = AppLocalizations.of(context);
+
+    // Fallback на случай, если локализация ещё не подхватилась (редко, но безопасно)
+    final titleSettings = t?.settings ?? 'Settings';
+    final titleAppearance = t?.appearance ?? 'Appearance';
+    final titleTheme = t?.theme ?? 'Theme';
+    final titleFontSize = t?.fontSize ?? 'Font size';
+    final titleAnimations = t?.animations ?? 'Animations';
+    final titleStoryPrefs = t?.storyPreferences ?? 'Story preferences';
+    final titleLanguage = t?.language ?? 'Language';
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(titleSettings)),
       body: ListView(
         children: [
           SettingsSection(
-            title: 'Appearance',
+            title: titleAppearance,
             children: [
               ChoiceTile<ThemeMode>(
                 leading: const Icon(Icons.brightness_6_outlined),
-                title: 'Theme',
+                title: titleTheme,
                 valueLabel: _themeLabel(s.themeMode),
                 onTap: () async {
                   final picked = await _pickEnum<ThemeMode>(
                     context: context,
-                    title: 'Theme',
+                    title: titleTheme,
                     current: s.themeMode,
                     values: ThemeMode.values,
                     label: _themeLabel,
                   );
-                  if (picked != null) await controller.setThemeMode(picked);
+                  if (picked != null) {
+                    await controller.setThemeMode(picked);
+                  }
                 },
               ),
               ChoiceTile<FontScale>(
                 leading: const Icon(Icons.text_fields),
-                title: 'Font size',
+                title: titleFontSize,
                 valueLabel: _fontLabel(s.fontScale),
                 onTap: () async {
                   final picked = await _pickEnum<FontScale>(
                     context: context,
-                    title: 'Font size',
+                    title: titleFontSize,
                     current: s.fontScale,
                     values: FontScale.values,
                     label: _fontLabel,
                   );
-                  if (picked != null) await controller.setFontScale(picked);
+                  if (picked != null) {
+                    await controller.setFontScale(picked);
+                  }
                 },
               ),
               SwitchTile(
                 leading: const Icon(Icons.animation_outlined),
-                title: 'Animations',
+                title: titleAnimations,
                 subtitle: 'Reduce motion if disabled',
                 value: s.animationsEnabled,
                 onChanged: controller.setAnimationsEnabled,
@@ -210,7 +224,7 @@ class SettingsPage extends StatelessWidget {
           ),
 
           SettingsSection(
-            title: 'Story preferences',
+            title: titleStoryPrefs,
             children: [
               ChoiceTile<AgeGroup>(
                 leading: const Icon(Icons.cake_outlined),
@@ -224,7 +238,9 @@ class SettingsPage extends StatelessWidget {
                     values: AgeGroup.values,
                     label: _ageLabel,
                   );
-                  if (picked != null) await controller.setAgeGroup(picked);
+                  if (picked != null) {
+                    await controller.setAgeGroup(picked);
+                  }
                 },
               ),
               ChoiceTile<StoryLength>(
@@ -239,7 +255,9 @@ class SettingsPage extends StatelessWidget {
                     values: StoryLength.values,
                     label: _lengthLabel,
                   );
-                  if (picked != null) await controller.setStoryLength(picked);
+                  if (picked != null) {
+                    await controller.setStoryLength(picked);
+                  }
                 },
               ),
               ChoiceTile<StoryComplexity>(
@@ -254,21 +272,24 @@ class SettingsPage extends StatelessWidget {
                     values: StoryComplexity.values,
                     label: _complexityLabel,
                   );
-                  if (picked != null)
+                  if (picked != null) {
                     await controller.setStoryComplexity(picked);
+                  }
                 },
               ),
               ChoiceTile<String>(
                 leading: const Icon(Icons.language_outlined),
-                title: 'Language',
+                title: titleLanguage,
                 valueLabel: langLabel,
                 onTap: () async {
                   final picked = await _pickLanguage(
                     context: context,
+                    title: titleLanguage,
                     current: s.defaultLanguageCode,
                   );
-                  if (picked != null)
+                  if (picked != null) {
                     await controller.setDefaultLanguageCode(picked);
+                  }
                 },
               ),
               SettingsTile(
@@ -358,8 +379,9 @@ class SettingsPage extends StatelessWidget {
                     values: CreativityLevel.values,
                     label: _creativityLabel,
                   );
-                  if (picked != null)
+                  if (picked != null) {
                     await controller.setCreativityLevel(picked);
+                  }
                 },
               ),
               SwitchTile(
@@ -398,7 +420,9 @@ class SettingsPage extends StatelessWidget {
                       ],
                     ),
                   );
-                  if (ok == true) await controller.resetToDefaults();
+                  if (ok == true) {
+                    await controller.resetToDefaults();
+                  }
                 },
               ),
             ],

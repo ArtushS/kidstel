@@ -1,0 +1,14 @@
+{
+  "@@locale": "ru",
+  "settings": "Настройки",
+  "appearance": "Внешний вид",
+  "theme": "Тема",
+  "fontSize": "Размер шрифта",
+  "animations": "Анимации",
+  "storyPreferences": "Параметры истории",
+  "language": "Язык",
+  "generate": "Сгенерировать",
+  "createNewStory": "Создать новую историю",
+  "describeYourIdea": "Опиши свою идею",
+  "typeYourIdea": "Введите идею или используйте голос…"
+}

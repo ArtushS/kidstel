@@ -1,0 +1,14 @@
+{
+  "@@locale": "en",
+  "settings": "Settings",
+  "appearance": "Appearance",
+  "theme": "Theme",
+  "fontSize": "Font size",
+  "animations": "Animations",
+  "storyPreferences": "Story preferences",
+  "language": "Language",
+  "generate": "Generate",
+  "createNewStory": "Create New Story",
+  "describeYourIdea": "Describe Your Idea",
+  "typeYourIdea": "Type your idea or use voice…"
+}

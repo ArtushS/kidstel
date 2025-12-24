@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../l10n/app_localizations.dart';
 
-import '../../shared/theme/theme_scope.dart';
+import '../../shared/settings/settings_scope.dart';
 
 class StorySetupPage extends StatefulWidget {
   const StorySetupPage({super.key});
@@ -30,6 +31,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
     for (final p in paths) {
       try {
         final url = await FirebaseStorage.instance.ref(p).getDownloadURL();
+        if (!mounted) return;
         await precacheImage(CachedNetworkImageProvider(url), context);
       } catch (_) {
         // ignore: network/config issues
@@ -116,6 +118,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _warmUpIcons();
     });
@@ -164,7 +167,14 @@ class _StorySetupPageState extends State<StorySetupPage> {
     }
   }
 
-  void _toggleDarkMode() => ThemeScope.of(context).toggle();
+  void _toggleDarkMode() {
+    final settings = SettingsScope.of(context);
+
+    // If system -> make dark on tap for predictable behavior
+    final current = settings.settings.themeMode;
+    final next = (current == ThemeMode.dark) ? ThemeMode.light : ThemeMode.dark;
+    settings.setThemeMode(next);
+  }
 
   void _openMenu() {
     showModalBottomSheet<void>(
@@ -188,7 +198,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
               title: const Text('Settings'),
               onTap: () {
                 Navigator.pop(context);
-                context.push('/settings'); // <-- push, не go
+                context.push('/settings'); // push, not go
               },
             ),
           ],
@@ -257,7 +267,8 @@ class _StorySetupPageState extends State<StorySetupPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ThemeScope.of(context).isDark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = AppLocalizations.of(context)!;
 
     final textPrimary = isDark ? Colors.white : Colors.black87;
     final textSecondary = isDark ? Colors.white70 : Colors.black54;
@@ -271,7 +282,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
         child: Column(
           children: [
             _TopBar(
-              title: 'Create New Story',
+              title: t.createNewStory,
               onBack: _handleBack,
               onMenu: _openMenu,
               onToggleDark: _toggleDarkMode,
@@ -285,7 +296,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SectionTitle('Describe Your Idea', color: textPrimary),
+                    _SectionTitle(t.describeYourIdea, color: textPrimary),
                     const SizedBox(height: 10),
                     _IdeaField(
                       controller: _ideaCtrl,
@@ -293,9 +304,9 @@ class _StorySetupPageState extends State<StorySetupPage> {
                       isListening: _isListening,
                       onMicTap: _toggleVoiceInput,
                       isDark: isDark,
+                      hintText: t.typeYourIdea,
                     ),
                     const SizedBox(height: 16),
-
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
                       child: _isIdeaMode
@@ -318,9 +329,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
                               isDark: isDark,
                             ),
                     ),
-
                     const SizedBox(height: 18),
-
                     AnimatedOpacity(
                       duration: const Duration(milliseconds: 180),
                       opacity: _isIdeaMode ? 0.35 : 1,
@@ -364,13 +373,16 @@ class _StorySetupPageState extends State<StorySetupPage> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 90),
                   ],
                 ),
               ),
             ),
-            _BottomBar(enabled: _canGenerate, onGenerate: _onGenerate),
+            _BottomBar(
+              enabled: _canGenerate,
+              onGenerate: _onGenerate,
+              label: t.generate,
+            ),
           ],
         ),
       ),
@@ -460,6 +472,7 @@ class _IdeaField extends StatelessWidget {
   final bool isListening;
   final VoidCallback onMicTap;
   final bool isDark;
+  final String hintText;
 
   const _IdeaField({
     required this.controller,
@@ -467,6 +480,7 @@ class _IdeaField extends StatelessWidget {
     required this.isListening,
     required this.onMicTap,
     required this.isDark,
+    required this.hintText,
   });
 
   @override
@@ -506,8 +520,8 @@ class _IdeaField extends StatelessWidget {
               focusNode: focusNode,
               minLines: 3,
               maxLines: 6,
-              decoration: const InputDecoration(
-                hintText: 'Type your idea or use voice…',
+              decoration: InputDecoration(
+                hintText: hintText,
                 border: InputBorder.none,
               ),
             ),
@@ -528,8 +542,13 @@ class _IdeaField extends StatelessWidget {
 class _BottomBar extends StatelessWidget {
   final bool enabled;
   final VoidCallback onGenerate;
+  final String label;
 
-  const _BottomBar({required this.enabled, required this.onGenerate});
+  const _BottomBar({
+    required this.enabled,
+    required this.onGenerate,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -543,9 +562,9 @@ class _BottomBar extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: enabled ? onGenerate : null,
             icon: const Icon(Icons.auto_awesome),
-            label: const Text(
-              'Generate',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            label: Text(
+              label,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -755,7 +774,7 @@ class _StorageImage extends StatelessWidget {
             height: size,
             child: CachedNetworkImage(
               imageUrl: snap.data!,
-              fit: BoxFit.cover, // ключ: картинка заполняет и не вылезает
+              fit: BoxFit.cover,
               placeholder: (_, __) => Container(color: bg),
               errorWidget: (_, __, ___) => Container(
                 color: bg,
@@ -820,7 +839,6 @@ class _PickCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         child: LayoutBuilder(
           builder: (context, c) {
-            // делаем персонажа крупнее: ~65% высоты карточки
             final double imageSize = (c.maxHeight * 0.65).clamp(120.0, 160.0);
 
             return Column(
