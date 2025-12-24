@@ -8,9 +8,6 @@ import '../shared/settings/in_memory_settings_repository.dart';
 import '../shared/settings/settings_controller.dart';
 import '../shared/settings/settings_scope.dart';
 
-import '../shared/theme/theme_controller.dart';
-import '../shared/theme/theme_scope.dart';
-
 class KidsTelApp extends StatefulWidget {
   const KidsTelApp({super.key});
 
@@ -20,33 +17,43 @@ class KidsTelApp extends StatefulWidget {
 
 class _KidsTelAppState extends State<KidsTelApp> {
   late final SettingsController _settings;
-  late final ThemeController _themeController;
 
   @override
   void initState() {
     super.initState();
     _settings = SettingsController(repository: InMemorySettingsRepository());
     _settings.init();
-    _themeController = ThemeController();
   }
 
   @override
   void dispose() {
     _settings.dispose();
-    _themeController.dispose();
     super.dispose();
   }
 
   double _fontFactorFromScale(FontScale s) {
-    if (s == FontScale.small) return 0.90;
-    if (s == FontScale.large) return 1.15;
-    return 1.00; // medium
+    switch (s) {
+      case FontScale.small:
+        return 0.90;
+      case FontScale.medium:
+        return 1.00;
+      case FontScale.large:
+        return 1.15;
+    }
   }
 
-  Locale _localeFromCode(String code) {
-    if (code == 'ru') return const Locale('ru');
-    if (code == 'hy') return const Locale('hy');
-    return const Locale('en');
+  Locale? _localeFromCode(String code) {
+    // Если язык "system" будет добавлен — вернем null (MaterialApp возьмёт системный)
+    // Сейчас используем фиксированный набор:
+    switch (code) {
+      case 'ru':
+        return const Locale('ru');
+      case 'hy':
+        return const Locale('hy');
+      case 'en':
+      default:
+        return const Locale('en');
+    }
   }
 
   @override
@@ -55,43 +62,38 @@ class _KidsTelAppState extends State<KidsTelApp> {
 
     return SettingsScope(
       controller: _settings,
-      child: ThemeScope(
-        controller: _themeController,
-        child: AnimatedBuilder(
-          animation: _settings,
-          builder: (context, _) {
-            final factor = _fontFactorFromScale(_settings.settings.fontScale);
-            final locale = _localeFromCode(
-              _settings.settings.defaultLanguageCode,
-            );
+      child: AnimatedBuilder(
+        animation: _settings,
+        builder: (context, _) {
+          final s = _settings.settings;
+          final factor = _fontFactorFromScale(s.fontScale);
 
-            return MaterialApp.router(
-              debugShowCheckedModeBanner: false,
+          return MaterialApp.router(
+            debugShowCheckedModeBanner: false,
 
-              // Theme
-              themeMode: _settings.settings.themeMode,
-              theme: ThemeData.light(),
-              darkTheme: ThemeData.dark(),
+            // Theme
+            themeMode: s.themeMode,
+            theme: ThemeData.light(),
+            darkTheme: ThemeData.dark(),
 
-              // Localization
-              locale: locale,
-              supportedLocales: AppLocalizations.supportedLocales,
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
+            // Localization
+            locale: _localeFromCode(s.defaultLanguageCode),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
 
-              // Router
-              routerConfig: router,
+            // Router
+            routerConfig: router,
 
-              // Global font scaling
-              builder: (context, child) {
-                final mq = MediaQuery.of(context);
-                return MediaQuery(
-                  data: mq.copyWith(textScaler: TextScaler.linear(factor)),
-                  child: child ?? const SizedBox.shrink(),
-                );
-              },
-            );
-          },
-        ),
+            // Global font scaling (applies everywhere)
+            builder: (context, child) {
+              final mq = MediaQuery.of(context);
+              return MediaQuery(
+                data: mq.copyWith(textScaler: TextScaler.linear(factor)),
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
+          );
+        },
       ),
     );
   }
