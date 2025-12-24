@@ -297,4 +297,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notFound => 'Not found';
+
+  @override
+  String get story => 'Story';
+
+  @override
+  String get chooseWhatNext => 'Choose what happens next:';
 }

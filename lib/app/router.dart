@@ -7,6 +7,7 @@ import '../features/story_setup/story_setup_page.dart';
 import '../features/reader/reader_page.dart';
 import '../features/settings/settings_page.dart';
 import '../shared/models/story_setup.dart';
+import '../features/story_reader/story_reader_page.dart';
 
 GoRouter buildRouter() {
   return GoRouter(
@@ -33,6 +34,11 @@ GoRouter buildRouter() {
         path: '/settings',
         pageBuilder: (context, state) =>
             const MaterialPage(child: SettingsPage()),
+      ),
+      GoRoute(
+        path: '/story-reader',
+        name: 'story-reader',
+        builder: (context, state) => const StoryReaderPage(),
       ),
     ],
     errorPageBuilder: (context, state) {

@@ -297,4 +297,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get notFound => 'Не найдено';
+
+  @override
+  String get story => 'История';
+
+  @override
+  String get chooseWhatNext => 'Выбери, что будет дальше:';
 }

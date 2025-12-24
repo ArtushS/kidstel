@@ -94,5 +94,7 @@
   "goLeft": "Go left",
   "goRight": "Go right",
   "stay": "Stay",
-  "notFound": "Not found"
+  "notFound": "Not found",
+  "story": "Story",
+  "chooseWhatNext": "Choose what happens next:"
 }

@@ -675,6 +675,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not found'**
   String get notFound;
+
+  /// No description provided for @story.
+  ///
+  /// In en, this message translates to:
+  /// **'Story'**
+  String get story;
+
+  /// No description provided for @chooseWhatNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what happens next:'**
+  String get chooseWhatNext;
 }
 
 class _AppLocalizationsDelegate

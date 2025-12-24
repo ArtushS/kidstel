@@ -298,4 +298,10 @@ class AppLocalizationsHy extends AppLocalizations {
 
   @override
   String get notFound => 'Չի գտնվել';
+
+  @override
+  String get story => 'Պատմություն';
+
+  @override
+  String get chooseWhatNext => 'Ընտրիր՝ ինչ կլինի հետո․';
 }
