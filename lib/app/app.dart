@@ -78,8 +78,8 @@ class _KidsTelAppState extends State<KidsTelApp> {
 
             // Localization
             locale: _localeFromCode(s.defaultLanguageCode),
-            supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: KidsLocalizations.supportedLocales,
+            localizationsDelegates: KidsLocalizations.localizationsDelegates,
 
             // Router
             routerConfig: router,

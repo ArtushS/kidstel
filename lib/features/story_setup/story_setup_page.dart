@@ -1,11 +1,12 @@
-import 'dart:math';
+// lib/features/story_setup/story_setup_page.dart
+
+import 'dart:async';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import '../../l10n/app_localizations.dart';
 
-import '../../shared/settings/settings_scope.dart';
+import 'package:kidsdom/l10n/app_localizations.dart';
 
 class StorySetupPage extends StatefulWidget {
   const StorySetupPage({super.key});
@@ -15,891 +16,478 @@ class StorySetupPage extends StatefulWidget {
 }
 
 class _StorySetupPageState extends State<StorySetupPage> {
-  final _ideaCtrl = TextEditingController();
-  final _ideaFocus = FocusNode();
-
-  Future<void> _warmUpIcons() async {
-    final paths = <String>[
-      ..._heroes
-          .where((e) => e.storagePath.isNotEmpty)
-          .map((e) => e.storagePath),
-      ..._locations
-          .where((e) => e.storagePath.isNotEmpty)
-          .map((e) => e.storagePath),
-    ];
-
-    for (final p in paths) {
-      try {
-        final url = await FirebaseStorage.instance.ref(p).getDownloadURL();
-        if (!mounted) return;
-        await precacheImage(CachedNetworkImageProvider(url), context);
-      } catch (_) {
-        // ignore: network/config issues
-      }
-    }
-  }
-
-  bool _isIdeaMode = false;
-  bool _isListening = false;
-
-  // Heroes (Random last)
+  // Mock data (later: Firestore / Storage + AI)
   final List<_PickItem> _heroes = const [
     _PickItem(
-      id: 'hero_bear',
-      title: 'Bear',
-      storagePath: 'heroes_icons/hero_bear.png',
+      id: 'hero_girl',
+      titleKey: _TitleKey.heroGirl,
+      imageUrl:
+          'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=1200&q=80',
     ),
     _PickItem(
-      id: 'hero_cat',
-      title: 'Cat',
-      storagePath: 'heroes_icons/hero_cat.png',
+      id: 'hero_boy',
+      titleKey: _TitleKey.heroBoy,
+      imageUrl:
+          'https://images.unsplash.com/photo-1519340333755-c8929bdf0d27?auto=format&fit=crop&w=1200&q=80',
     ),
     _PickItem(
-      id: 'hero_fox',
-      title: 'Fox',
-      storagePath: 'heroes_icons/hero_fox.png',
+      id: 'hero_robot',
+      titleKey: _TitleKey.heroRobot,
+      imageUrl:
+          'https://images.unsplash.com/photo-1520975869018-bf09f96c2e7d?auto=format&fit=crop&w=1200&q=80',
     ),
-    _PickItem(
-      id: 'hero_rabbit',
-      title: 'Rabbit',
-      storagePath: 'heroes_icons/hero_rabbit.png',
-    ),
-    _PickItem(
-      id: 'hero_dice',
-      title: 'Dice',
-      storagePath: 'heroes_icons/hero_dice.png',
-    ),
-    _PickItem(id: 'hero_random', title: 'Random', storagePath: ''), // last
   ];
 
-  // Locations (Random last)
   final List<_PickItem> _locations = const [
     _PickItem(
-      id: 'castel',
-      title: 'Castle',
-      storagePath: 'location_icons/castel.png',
+      id: 'loc_forest',
+      titleKey: _TitleKey.locForest,
+      imageUrl:
+          'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80',
     ),
     _PickItem(
-      id: 'cozy',
-      title: 'Cozy cottage',
-      storagePath: 'location_icons/cozy_cottage_nest.png',
+      id: 'loc_city',
+      titleKey: _TitleKey.locCity,
+      imageUrl:
+          'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=1200&q=80',
     ),
     _PickItem(
-      id: 'island',
-      title: 'Floating island',
-      storagePath: 'location_icons/floating_island_i.png',
+      id: 'loc_space',
+      titleKey: _TitleKey.locSpace,
+      imageUrl:
+          'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=1200&q=80',
     ),
-    _PickItem(
-      id: 'snow_castel',
-      title: 'Snow castle',
-      storagePath: 'location_icons/snhow_castel.png',
-    ),
-    _PickItem(
-      id: 'underwater',
-      title: 'Underwater',
-      storagePath: 'location_icons/underwater_kingdom_i.png',
-    ),
-    _PickItem(id: 'loc_random', title: 'Random', storagePath: ''), // last
   ];
 
-  // Types (text-only for now)
   final List<_PickItem> _types = const [
-    _PickItem(id: 'type_1', title: 'Friendly', storagePath: ''),
-    _PickItem(id: 'type_2', title: 'Adventure', storagePath: ''),
-    _PickItem(id: 'type_3', title: 'Magic', storagePath: ''),
-    _PickItem(id: 'type_4', title: 'Funny', storagePath: ''),
-    _PickItem(id: 'type_5', title: 'Romantic', storagePath: ''),
+    _PickItem(
+      id: 'type_adventure',
+      titleKey: _TitleKey.typeAdventure,
+      imageUrl:
+          'https://images.unsplash.com/photo-1520975661595-6453be3f7070?auto=format&fit=crop&w=1200&q=80',
+    ),
+    _PickItem(
+      id: 'type_kindness',
+      titleKey: _TitleKey.typeKindness,
+      imageUrl:
+          'https://images.unsplash.com/photo-1520975958225-45c3c42b48b9?auto=format&fit=crop&w=1200&q=80',
+    ),
+    _PickItem(
+      id: 'type_funny',
+      titleKey: _TitleKey.typeFunny,
+      imageUrl:
+          'https://images.unsplash.com/photo-1520975693410-001f4c94b57d?auto=format&fit=crop&w=1200&q=80',
+    ),
   ];
 
   int _heroIndex = 0;
-  int _locIndex = 0;
+  int _locationIndex = 0;
   int _typeIndex = 0;
+
+  bool _warmingUp = false;
+  bool _generating = false;
 
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _warmUpIcons();
+      unawaited(_warmUpCache());
     });
-
-    // Idea mode depends ONLY on (listening OR hasText)
-    void recompute() {
-      final hasText = _ideaCtrl.text.trim().isNotEmpty;
-      if (!mounted) return;
-      setState(() => _isIdeaMode = _isListening || hasText);
-    }
-
-    _ideaFocus.addListener(recompute);
-    _ideaCtrl.addListener(recompute);
   }
 
-  @override
-  void dispose() {
-    _ideaCtrl.dispose();
-    _ideaFocus.dispose();
-    super.dispose();
-  }
-
-  Future<void> _toggleVoiceInput() async {
-    // MVP placeholder
-    setState(() {
-      _isListening = !_isListening;
-      _isIdeaMode = _isListening || _ideaCtrl.text.trim().isNotEmpty;
-    });
-
-    if (_isListening) {
-      await Future<void>.delayed(const Duration(milliseconds: 600));
-      if (!mounted) return;
-
-      if (_ideaCtrl.text.trim().isEmpty) {
-        _ideaCtrl.text =
-            'A story about a little dragon who wants to be friends...';
-        _ideaCtrl.selection = TextSelection.fromPosition(
-          TextPosition(offset: _ideaCtrl.text.length),
-        );
-      }
-
-      setState(() {
-        _isListening = false;
-        _isIdeaMode = _ideaCtrl.text.trim().isNotEmpty;
-      });
-    }
-  }
-
-  void _toggleDarkMode() {
-    final settings = SettingsScope.of(context);
-
-    // If system -> make dark on tap for predictable behavior
-    final current = settings.settings.themeMode;
-    final next = (current == ThemeMode.dark) ? ThemeMode.light : ThemeMode.dark;
-    settings.setThemeMode(next);
-  }
-
-  void _openMenu() {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.person_outline_rounded),
-              title: const Text('Account'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: account page later
-                // context.push('/account');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: const Text('Settings'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/settings'); // push, not go
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  bool get _canGenerate {
-    final hasIdea = _ideaCtrl.text.trim().isNotEmpty;
-    final hasPicks =
-        _heroes.isNotEmpty && _locations.isNotEmpty && _types.isNotEmpty;
-    return hasIdea || hasPicks;
-  }
-
-  _PickItem _resolveRandomIfNeeded(_PickItem picked, List<_PickItem> list) {
-    if (!picked.isRandom) return picked;
-
-    final pool = list.where((e) => !e.isRandom).toList(growable: false);
-    if (pool.isEmpty) return picked;
-
-    final r = Random();
-    return pool[r.nextInt(pool.length)];
-  }
-
-  Future<void> _onGenerate() async {
-    if (!_canGenerate) return;
-
-    final idea = _ideaCtrl.text.trim();
-
-    final rawHero = _heroes[_heroIndex];
-    final rawLoc = _locations[_locIndex];
-    final rawType = _types[_typeIndex];
-
-    final hero = _resolveRandomIfNeeded(rawHero, _heroes);
-    final loc = _resolveRandomIfNeeded(rawLoc, _locations);
-    final type = rawType;
-
-    final summary = (idea.isNotEmpty)
-        ? 'IDEA MODE:\n$idea'
-        : 'PICKS MODE:\nHero: ${hero.title}\nLocation: ${loc.title}\nType: ${type.title}';
-
+  Future<void> _warmUpCache() async {
     if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Generate request (MVP)'),
-        content: Text(summary),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+
+    setState(() => _warmingUp = true);
+    try {
+      final urls = <String>{
+        ..._heroes.map((e) => e.imageUrl),
+        ..._locations.map((e) => e.imageUrl),
+        ..._types.map((e) => e.imageUrl),
+      }.toList();
+
+      for (final url in urls) {
+        if (!mounted) break;
+        await precacheImage(CachedNetworkImageProvider(url), context);
+      }
+    } catch (_) {
+      // warm-up must never break UI
+    } finally {
+      // IMPORTANT: no "return" inside finally
+      if (mounted) {
+        setState(() => _warmingUp = false);
+      }
+    }
   }
 
-  void _handleBack() {
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go('/'); // Home
+  Future<void> _generateMockStory() async {
+    if (!mounted) return;
+
+    setState(() => _generating = true);
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+
+      final payload = <String, dynamic>{
+        'heroId': _heroes[_heroIndex].id,
+        'locationId': _locations[_locationIndex].id,
+        'typeId': _types[_typeIndex].id,
+      };
+
+      if (!mounted) return;
+      context.push('/reader', extra: payload);
+    } finally {
+      // IMPORTANT: no "return" inside finally
+      if (mounted) {
+        setState(() => _generating = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final t = AppLocalizations.of(context)!;
-
-    final textPrimary = isDark ? Colors.white : Colors.black87;
-    final textSecondary = isDark ? Colors.white70 : Colors.black54;
-
-    final hero = _heroes[_heroIndex];
-    final loc = _locations[_locIndex];
-    final type = _types[_typeIndex];
+    final l10n = KidsLocalizations.of(context);
+    assert(
+      l10n != null,
+      'KidsLocalizations is null. Check localizationsDelegates/supportedLocales.',
+    );
+    final t = l10n!;
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text(t.createNewStory),
+        actions: [
+          IconButton(
+            tooltip: t.settings,
+            onPressed: () => context.push('/settings'),
+            icon: const Icon(Icons.settings_outlined),
+          ),
+        ],
+      ),
       body: SafeArea(
-        child: Column(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            _TopBar(
-              title: t.createNewStory,
-              onBack: _handleBack,
-              onMenu: _openMenu,
-              onToggleDark: _toggleDarkMode,
-              isDark: isDark,
-              titleColor: textPrimary,
-              iconColor: textPrimary,
+            if (_warmingUp) ...[
+              _InfoBanner(
+                icon: Icons.cloud_download_outlined,
+                text: t.loadingAssets,
+              ),
+              const SizedBox(height: 12),
+            ],
+            _SectionHeader(
+              title: t.hero,
+              subtitle: t.swipeToChoose,
+              icon: Icons.person_outline_rounded,
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SectionTitle(t.describeYourIdea, color: textPrimary),
-                    const SizedBox(height: 10),
-                    _IdeaField(
-                      controller: _ideaCtrl,
-                      focusNode: _ideaFocus,
-                      isListening: _isListening,
-                      onMicTap: _toggleVoiceInput,
-                      isDark: isDark,
-                      hintText: t.typeYourIdea,
-                    ),
-                    const SizedBox(height: 16),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: _isIdeaMode
-                          ? Padding(
-                              key: const ValueKey('idea-msg'),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Text(
-                                'Story will be generated from your idea',
-                                style: TextStyle(
-                                  color: textSecondary,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            )
-                          : _SelectedChips(
-                              key: const ValueKey('chips'),
-                              hero: hero,
-                              loc: loc,
-                              type: type,
-                              isDark: isDark,
-                            ),
-                    ),
-                    const SizedBox(height: 18),
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 180),
-                      opacity: _isIdeaMode ? 0.35 : 1,
-                      child: IgnorePointer(
-                        ignoring: _isIdeaMode,
-                        child: Column(
-                          children: [
-                            _CarouselSection(
-                              title: 'Hero',
-                              subtitle: 'Swipe to choose',
-                              height: 240,
-                              items: _heroes,
-                              initialPage: _heroIndex,
-                              onPageChanged: (i) =>
-                                  setState(() => _heroIndex = i),
-                              isDark: isDark,
-                            ),
-                            const SizedBox(height: 16),
-                            _CarouselSection(
-                              title: 'Location',
-                              subtitle: 'Swipe to choose',
-                              height: 240,
-                              items: _locations,
-                              initialPage: _locIndex,
-                              onPageChanged: (i) =>
-                                  setState(() => _locIndex = i),
-                              isDark: isDark,
-                            ),
-                            const SizedBox(height: 16),
-                            _CarouselSection(
-                              title: 'Story Type',
-                              subtitle: 'Swipe to choose',
-                              height: 240,
-                              items: _types,
-                              initialPage: _typeIndex,
-                              onPageChanged: (i) =>
-                                  setState(() => _typeIndex = i),
-                              isDark: isDark,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 90),
-                  ],
-                ),
+            const SizedBox(height: 10),
+            _Carousel(
+              items: _heroes,
+              index: _heroIndex,
+              onChanged: (i) => setState(() => _heroIndex = i),
+              titleBuilder: (item) => _titleFor(t, item.titleKey),
+            ),
+            const SizedBox(height: 18),
+            _SectionHeader(
+              title: t.location,
+              subtitle: t.swipeToChoose,
+              icon: Icons.place_outlined,
+            ),
+            const SizedBox(height: 10),
+            _Carousel(
+              items: _locations,
+              index: _locationIndex,
+              onChanged: (i) => setState(() => _locationIndex = i),
+              titleBuilder: (item) => _titleFor(t, item.titleKey),
+            ),
+            const SizedBox(height: 18),
+            _SectionHeader(
+              title: t.storyType,
+              subtitle: t.swipeToChoose,
+              icon: Icons.auto_stories_outlined,
+            ),
+            const SizedBox(height: 10),
+            _Carousel(
+              items: _types,
+              index: _typeIndex,
+              onChanged: (i) => setState(() => _typeIndex = i),
+              titleBuilder: (item) => _titleFor(t, item.titleKey),
+            ),
+            const SizedBox(height: 20),
+            _InfoBanner(
+              icon: Icons.info_outline_rounded,
+              text: t.storyWillBeGenerated,
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: _generating ? null : _generateMockStory,
+                icon: _generating
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome_rounded),
+                label: Text(_generating ? t.generating : t.generateStory),
               ),
             ),
-            _BottomBar(
-              enabled: _canGenerate,
-              onGenerate: _onGenerate,
-              label: t.generate,
+            const SizedBox(height: 10),
+            Text(
+              t.previewHint,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
       ),
     );
   }
+
+  String _titleFor(KidsLocalizations t, _TitleKey key) {
+    switch (key) {
+      case _TitleKey.heroGirl:
+        return t.heroGirl;
+      case _TitleKey.heroBoy:
+        return t.heroBoy;
+      case _TitleKey.heroRobot:
+        return t.heroRobot;
+      case _TitleKey.locForest:
+        return t.locationForest;
+      case _TitleKey.locCity:
+        return t.locationCity;
+      case _TitleKey.locSpace:
+        return t.locationSpace;
+      case _TitleKey.typeAdventure:
+        return t.typeAdventure;
+      case _TitleKey.typeKindness:
+        return t.typeKindness;
+      case _TitleKey.typeFunny:
+        return t.typeFunny;
+    }
+  }
 }
 
-/* ---------------- UI building blocks ---------------- */
-
-class _TopBar extends StatelessWidget {
-  final VoidCallback onBack;
-  final VoidCallback onMenu;
-  final VoidCallback onToggleDark;
-  final bool isDark;
-  final String title;
-  final Color titleColor;
-  final Color iconColor;
-
-  const _TopBar({
-    required this.onBack,
-    required this.onMenu,
-    required this.onToggleDark,
-    required this.isDark,
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
     required this.title,
-    required this.titleColor,
-    required this.iconColor,
+    required this.subtitle,
+    required this.icon,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 8, 6, 4),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: onBack,
-            icon: Icon(Icons.arrow_back_ios_new_rounded, color: iconColor),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: titleColor,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Toggle dark mode',
-            onPressed: onToggleDark,
-            icon: Icon(
-              isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-              color: iconColor,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Menu',
-            onPressed: onMenu,
-            icon: Icon(Icons.menu_rounded, color: iconColor),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  final Color color;
-  const _SectionTitle(this.text, {required this.color});
+  final String title;
+  final String subtitle;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: color),
-    );
-  }
-}
-
-class _IdeaField extends StatelessWidget {
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final bool isListening;
-  final VoidCallback onMicTap;
-  final bool isDark;
-  final String hintText;
-
-  const _IdeaField({
-    required this.controller,
-    required this.focusNode,
-    required this.isListening,
-    required this.onMicTap,
-    required this.isDark,
-    required this.hintText,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF6F0E6);
-    final shadowDark = isDark
-        ? Colors.black.withValues(alpha: 0.6)
-        : const Color(0xFFD8CFC2);
-    final shadowLight = isDark
-        ? Colors.white.withValues(alpha: 0.06)
-        : const Color(0xFFFFFFFF);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: shadowLight,
-            offset: const Offset(-6, -6),
-            blurRadius: 12,
-          ),
-          BoxShadow(
-            color: shadowDark,
-            offset: const Offset(6, 6),
-            blurRadius: 12,
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              focusNode: focusNode,
-              minLines: 3,
-              maxLines: 6,
-              decoration: InputDecoration(
-                hintText: hintText,
-                border: InputBorder.none,
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Voice input',
-            onPressed: onMicTap,
-            icon: Icon(
-              isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomBar extends StatelessWidget {
-  final bool enabled;
-  final VoidCallback onGenerate;
-  final String label;
-
-  const _BottomBar({
-    required this.enabled,
-    required this.onGenerate,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
-        child: SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: FilledButton.icon(
-            onPressed: enabled ? onGenerate : null,
-            icon: const Icon(Icons.auto_awesome),
-            label: Text(
-              label,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SelectedChips extends StatelessWidget {
-  final _PickItem hero;
-  final _PickItem loc;
-  final _PickItem type;
-  final bool isDark;
-
-  const _SelectedChips({
-    super.key,
-    required this.hero,
-    required this.loc,
-    required this.type,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        _MiniChip(icon: '🧸', text: hero.title, isDark: isDark),
-        _MiniChip(icon: '📍', text: loc.title, isDark: isDark),
-        _MiniChip(icon: '✨', text: type.title, isDark: isDark),
+        const SizedBox(width: 8),
+        Text(subtitle, style: theme.textTheme.bodySmall),
       ],
     );
   }
 }
 
-class _MiniChip extends StatelessWidget {
-  final String icon;
-  final String text;
-  final bool isDark;
-
-  const _MiniChip({
-    required this.icon,
-    required this.text,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.08)
-            : Colors.white.withValues(alpha: 0.35),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(icon, style: const TextStyle(fontSize: 16)),
-          const SizedBox(width: 8),
-          Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
-
-class _CarouselSection extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final double height;
-  final List<_PickItem> items;
-  final int initialPage;
-  final ValueChanged<int> onPageChanged;
-  final bool isDark;
-
-  const _CarouselSection({
-    required this.title,
-    required this.subtitle,
-    required this.height,
+class _Carousel extends StatelessWidget {
+  const _Carousel({
     required this.items,
-    required this.initialPage,
-    required this.onPageChanged,
-    required this.isDark,
+    required this.index,
+    required this.onChanged,
+    required this.titleBuilder,
   });
+
+  final List<_PickItem> items;
+  final int index;
+  final ValueChanged<int> onChanged;
+  final String Function(_PickItem) titleBuilder;
 
   @override
   Widget build(BuildContext context) {
     final controller = PageController(
-      viewportFraction: 0.70,
-      initialPage: initialPage,
+      viewportFraction: 0.86,
+      initialPage: index,
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+    return SizedBox(
+      height: 190,
+      child: PageView.builder(
+        controller: controller,
+        onPageChanged: onChanged,
+        itemCount: items.length,
+        itemBuilder: (context, i) {
+          final item = items[i];
+          return AnimatedPadding(
+            duration: const Duration(milliseconds: 200),
+            padding: EdgeInsets.only(
+              left: i == 0 ? 0 : 8,
+              right: i == items.length - 1 ? 0 : 8,
+              top: i == index ? 0 : 10,
+              bottom: i == index ? 0 : 10,
             ),
-            const SizedBox(width: 10),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: (isDark ? Colors.white70 : Colors.black54),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: height,
-          child: PageView.builder(
-            controller: controller,
-            itemCount: items.length,
-            onPageChanged: onPageChanged,
-            itemBuilder: (context, index) {
-              return AnimatedBuilder(
-                animation: controller,
-                builder: (context, child) {
-                  double t = 1.0;
-                  if (controller.position.haveDimensions) {
-                    final page =
-                        controller.page ?? controller.initialPage.toDouble();
-                    t = (1 - ((page - index).abs() * 0.18)).clamp(0.84, 1.0);
-                  }
-                  return Transform.scale(scale: t, child: child);
-                },
-                child: _PickCard(item: items[index], isDark: isDark),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StorageImage extends StatelessWidget {
-  final String storagePath;
-  final double size;
-  final bool isDark;
-  final IconData fallbackIcon;
-
-  const _StorageImage({
-    required this.storagePath,
-    required this.size,
-    required this.isDark,
-    required this.fallbackIcon,
-  });
-
-  static final Map<String, Future<String>> _urlFutures = {};
-
-  Future<String> _getUrl() {
-    return _urlFutures.putIfAbsent(storagePath, () {
-      return FirebaseStorage.instance.ref(storagePath).getDownloadURL();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.white.withValues(alpha: 0.45);
-
-    if (storagePath.isEmpty) {
-      return Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          color: bg,
-        ),
-        child: Icon(fallbackIcon, size: size * 0.50),
-      );
-    }
-
-    return FutureBuilder<String>(
-      future: _getUrl(),
-      builder: (context, snap) {
-        if (!snap.hasData) {
-          return Container(
-            width: size,
-            height: size,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              color: bg,
-            ),
-            child: const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
+            child: _CardItem(
+              imageUrl: item.imageUrl,
+              title: titleBuilder(item),
+              selected: i == index,
             ),
           );
-        }
-
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: CachedNetworkImage(
-              imageUrl: snap.data!,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => Container(color: bg),
-              errorWidget: (_, __, ___) => Container(
-                color: bg,
-                alignment: Alignment.center,
-                child: const Icon(Icons.broken_image_outlined),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _PickCard extends StatelessWidget {
-  final _PickItem item;
-  final bool isDark;
-
-  const _PickCard({required this.item, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF6F0E6);
-    final shadowDark = isDark
-        ? Colors.black.withValues(alpha: 0.6)
-        : const Color(0xFFD8CFC2);
-    final shadowLight = isDark
-        ? Colors.white.withValues(alpha: 0.06)
-        : const Color(0xFFFFFFFF);
-
-    final bool random = item.isRandom;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      child: Container(
-        decoration: BoxDecoration(
-          color: random
-              ? (isDark ? const Color(0xFF232323) : const Color(0xFFF2E9DA))
-              : bg,
-          borderRadius: BorderRadius.circular(22),
-          border: random
-              ? Border.all(
-                  color: (isDark
-                      ? Colors.white.withValues(alpha: 0.18)
-                      : Colors.black.withValues(alpha: 0.10)),
-                  width: 1.2,
-                )
-              : null,
-          boxShadow: [
-            BoxShadow(
-              color: shadowLight,
-              offset: const Offset(-6, -6),
-              blurRadius: 12,
-            ),
-            BoxShadow(
-              color: shadowDark,
-              offset: const Offset(6, 6),
-              blurRadius: 12,
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-        child: LayoutBuilder(
-          builder: (context, c) {
-            final double imageSize = (c.maxHeight * 0.65).clamp(120.0, 160.0);
-
-            return Column(
-              children: [
-                Expanded(
-                  child: Center(
-                    child: random
-                        ? Container(
-                            width: imageSize,
-                            height: imageSize,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(18),
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : Colors.white.withValues(alpha: 0.45),
-                            ),
-                            child: Icon(
-                              Icons.casino_rounded,
-                              size: imageSize * 0.55,
-                            ),
-                          )
-                        : _StorageImage(
-                            storagePath: item.storagePath,
-                            size: imageSize,
-                            isDark: isDark,
-                            fallbackIcon: Icons.auto_awesome,
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  item.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            );
-          },
-        ),
+        },
       ),
     );
   }
 }
 
-class _PickItem {
-  final String id;
-  final String title;
-  final String storagePath;
-
-  const _PickItem({
-    required this.id,
+class _CardItem extends StatelessWidget {
+  const _CardItem({
+    required this.imageUrl,
     required this.title,
-    required this.storagePath,
+    required this.selected,
   });
 
-  bool get isRandom =>
-      id.endsWith('_random') || id == 'hero_random' || id == 'loc_random';
+  final String imageUrl;
+  final String title;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      elevation: selected ? 1.5 : 0.4,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      color: theme.colorScheme.surface,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CachedNetworkImage(
+            imageUrl: imageUrl,
+            fit: BoxFit.cover,
+            fadeInDuration: const Duration(milliseconds: 120),
+            placeholder: (context, _) => Container(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.5,
+              ),
+              alignment: Alignment.center,
+              child: const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+            errorWidget: (context, url, error) => Container(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.5,
+              ),
+              alignment: Alignment.center,
+              child: const Icon(Icons.broken_image_outlined),
+            ),
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.0),
+                  Colors.black.withValues(alpha: 0.55),
+                ],
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  if (selected)
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoBanner extends StatelessWidget {
+  const _InfoBanner({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: theme.textTheme.bodySmall)),
+        ],
+      ),
+    );
+  }
+}
+
+enum _TitleKey {
+  heroGirl,
+  heroBoy,
+  heroRobot,
+  locForest,
+  locCity,
+  locSpace,
+  typeAdventure,
+  typeKindness,
+  typeFunny,
+}
+
+class _PickItem {
+  const _PickItem({
+    required this.id,
+    required this.titleKey,
+    required this.imageUrl,
+  });
+
+  final String id;
+  final _TitleKey titleKey;
+  final String imageUrl;
 }
