@@ -191,16 +191,24 @@ class _TextCard extends StatelessWidget {
     final controller = context.watch<StoryReaderController>();
     final theme = Theme.of(context);
 
+    // IMPORTANT: Do not override Text.textScaler here.
+    // Global text scaling is applied at the app root via MediaQuery.textScaler.
+    // If we set Text.textScaler, we bypass the global scaler and only this widget
+    // will use the local scale. Instead, apply the reader's per-page adjustment as
+    // a multiplier on the base TextStyle fontSize.
+    final baseStyle =
+        theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
+    final baseFontSize = baseStyle.fontSize ?? 16;
+    final effectiveStyle = baseStyle.copyWith(
+      fontSize: (baseFontSize * controller.textScale).clamp(10, 60),
+    );
+
     return Card(
       margin: const EdgeInsets.only(top: 16, bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Text(
-          data.text,
-          textScaler: TextScaler.linear(controller.textScale),
-          style: theme.textTheme.bodyLarge,
-        ),
+        child: Text(data.text, style: effectiveStyle),
       ),
     );
   }

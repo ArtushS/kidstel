@@ -26,7 +26,14 @@ class ChoiceTile<T> extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(valueLabel),
+          Flexible(
+            child: Text(
+              valueLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+            ),
+          ),
           const SizedBox(width: 8),
           const Icon(Icons.chevron_right),
         ],

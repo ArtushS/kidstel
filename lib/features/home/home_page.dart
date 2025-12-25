@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../shared/ui/ui_constants.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -50,6 +51,7 @@ class _NeumorphicCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     const bg = Color(0xFFF6F0E6);
     const shadowDark = Color(0xFFD8CFC2);
     const shadowLight = Color(0xFFFFFFFF);
@@ -57,8 +59,8 @@ class _NeumorphicCircleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 220,
-        height: 220,
+        width: homeCircleDiameter,
+        height: homeCircleDiameter,
         decoration: BoxDecoration(
           color: bg,
           shape: BoxShape.circle,
@@ -80,12 +82,18 @@ class _NeumorphicCircleButton extends StatelessWidget {
           children: [
             Icon(icon, size: 54, color: Colors.black54),
             const SizedBox(height: 14),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: homeCircleLabelMaxLines,
+                overflow: TextOverflow.ellipsis,
+                style: (theme.textTheme.titleLarge ?? const TextStyle())
+                    .copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
               ),
             ),
           ],

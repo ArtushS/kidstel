@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shared/ui/ui_constants.dart';
 
 import '../../shared/settings/settings_scope.dart';
 import '../story/services/story_service.dart';
@@ -541,6 +542,7 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(6, 8, 6, 4),
       child: Row(
@@ -553,11 +555,8 @@ class _TopBar extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: titleColor,
-              ),
+              style: (theme.textTheme.titleMedium ?? const TextStyle())
+                  .copyWith(fontWeight: FontWeight.w600, color: titleColor),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -587,9 +586,13 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Text(
       text,
-      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: color),
+      style: (theme.textTheme.titleSmall ?? const TextStyle()).copyWith(
+        fontWeight: FontWeight.w600,
+        color: color,
+      ),
     );
   }
 }
@@ -680,6 +683,7 @@ class _BottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -692,7 +696,9 @@ class _BottomBar extends StatelessWidget {
             icon: const Icon(Icons.auto_awesome),
             label: Text(
               label,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: (theme.textTheme.labelLarge ?? const TextStyle()).copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -742,6 +748,7 @@ class _MiniChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -753,9 +760,18 @@ class _MiniChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 16)),
+          Text(icon, style: theme.textTheme.titleSmall),
           const SizedBox(width: 8),
-          Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: (theme.textTheme.labelLarge ?? const TextStyle()).copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -783,28 +799,34 @@ class _CarouselSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final controller = PageController(
-      viewportFraction: 0.70,
+      // Keep item sizing stable across i18n/long labels.
+      // The item itself has a fixed width below; viewportFraction should match
+      // the reference value so pages don't become unexpectedly "fat".
+      viewportFraction: carouselViewportFraction,
       initialPage: initialPage,
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: (isDark ? Colors.white70 : Colors.black54),
-              ),
-            ),
-          ],
+        // i18n-safe header: Armenian strings can be long. Keep layout stable by
+        // avoiding a tight Row that can overflow.
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: (theme.textTheme.titleSmall ?? const TextStyle()).copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: (isDark ? Colors.white70 : Colors.black54)),
         ),
         const SizedBox(height: 10),
         SizedBox(
@@ -825,7 +847,14 @@ class _CarouselSection extends StatelessWidget {
                   }
                   return Transform.scale(scale: t, child: child);
                 },
-                child: _PickCard(item: items[index], isDark: isDark),
+                child: Center(
+                  child: SizedBox(
+                    // Fixed item width (universal rule for horizontal carousels)
+                    // so long localized text cannot change layout.
+                    width: carouselItemWidth,
+                    child: _PickCard(item: items[index], isDark: isDark),
+                  ),
+                ),
               );
             },
           ),
@@ -967,7 +996,12 @@ class _PickCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         child: LayoutBuilder(
           builder: (context, c) {
-            final double imageSize = (c.maxHeight * 0.65).clamp(120.0, 160.0);
+            // Defensive sizing: the card may be inside a horizontal PageView with a
+            // fixed width. Keep the image square within available constraints.
+            final maxSquare = min(c.maxWidth, c.maxHeight);
+            final double imageSize = (maxSquare * 0.90)
+                .clamp(56.0, maxSquare)
+                .toDouble();
 
             return Column(
               children: [
@@ -1000,13 +1034,12 @@ class _PickCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   item.title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
                   textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ],
             );
