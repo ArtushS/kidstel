@@ -338,7 +338,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
       final json = await service.callAgentJson(body);
       final resp = GenerateStoryResponse.fromJson(json);
 
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       // Pass settings to StoryReaderPage via extra
       context.push(
@@ -356,7 +356,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
         },
       );
     } catch (e) {
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       final title = 'Generation failed';
       final msg = e.toString();
@@ -903,8 +903,8 @@ class _StorageImage extends StatelessWidget {
             child: CachedNetworkImage(
               imageUrl: snap.data!,
               fit: BoxFit.cover,
-              placeholder: (_, __) => Container(color: bg),
-              errorWidget: (_, __, ___) => Container(
+              placeholder: (context, url) => Container(color: bg),
+              errorWidget: (context, url, error) => Container(
                 color: bg,
                 alignment: Alignment.center,
                 child: const Icon(Icons.broken_image_outlined),

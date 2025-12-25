@@ -9,7 +9,7 @@ import 'models/generate_story_response.dart';
 class StoryService {
   /// Set your Agent endpoint here (Cloud Function HTTPS endpoint or your server).
   /// Example:
-  /// https://<region>-<project>.cloudfunctions.net/generateStory
+  /// `https://<region>-<project>.cloudfunctions.net/generateStory`
   final String endpointUrl;
 
   const StoryService({required this.endpointUrl});

@@ -52,14 +52,20 @@ class SettingsPage extends StatelessWidget {
                 title: Text(title, style: Theme.of(ctx).textTheme.titleMedium),
               ),
               const Divider(height: 1),
-              ...values.map((v) {
-                return RadioListTile<T>(
-                  value: v,
-                  groupValue: current,
-                  title: Text(label(v)),
-                  onChanged: (val) => Navigator.of(ctx).pop(val),
-                );
-              }),
+              RadioGroup<T>(
+                groupValue: current,
+                onChanged: (val) {
+                  if (val == null) return;
+                  Navigator.of(ctx).pop(val);
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final v in values)
+                      RadioListTile<T>(value: v, title: Text(label(v))),
+                  ],
+                ),
+              ),
               const SizedBox(height: 8),
             ],
           ),
@@ -85,14 +91,20 @@ class SettingsPage extends StatelessWidget {
                 title: Text(title, style: Theme.of(ctx).textTheme.titleMedium),
               ),
               const Divider(height: 1),
-              ..._languages.entries.map((e) {
-                return RadioListTile<String>(
-                  value: e.key,
-                  groupValue: current,
-                  title: Text(e.value),
-                  onChanged: (val) => Navigator.of(ctx).pop(val),
-                );
-              }),
+              RadioGroup<String>(
+                groupValue: current,
+                onChanged: (val) {
+                  if (val == null) return;
+                  Navigator.of(ctx).pop(val);
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final e in _languages.entries)
+                      RadioListTile<String>(value: e.key, title: Text(e.value)),
+                  ],
+                ),
+              ),
               const SizedBox(height: 8),
             ],
           ),

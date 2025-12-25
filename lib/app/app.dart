@@ -65,7 +65,7 @@ class _KidsTelAppState extends State<KidsTelApp> {
     return MultiProvider(
       providers: [
         Provider<StoryService>(
-          create: (_) => StoryService(endpointUrl: STORY_AGENT_URL),
+          create: (_) => StoryService(endpointUrl: storyAgentUrl),
         ),
         // другие провайдеры...
       ],

@@ -142,7 +142,7 @@ class _ImageCard extends StatelessWidget {
               aspectRatio: 16 / 9,
               child: data.coverImageUrl != null
                   ? Image.network(data.coverImageUrl!, fit: BoxFit.cover)
-                  : Container(color: theme.colorScheme.surfaceVariant),
+                  : Container(color: theme.colorScheme.surfaceContainerHighest),
             ),
             Positioned(
               left: 12,
@@ -173,7 +173,7 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withOpacity(0.85),
+        color: theme.colorScheme.surface.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(label, style: theme.textTheme.labelMedium),
@@ -198,7 +198,7 @@ class _TextCard extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Text(
           data.text,
-          textScaleFactor: controller.textScale,
+          textScaler: TextScaler.linear(controller.textScale),
           style: theme.textTheme.bodyLarge,
         ),
       ),
