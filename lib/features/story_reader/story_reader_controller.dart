@@ -1,78 +1,87 @@
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 
-import 'models/story_view_data.dart';
+import '../story/services/story_service.dart';
+import '../story/services/models/generate_story_response.dart';
+
 import 'models/story_choice_view_data.dart';
+import 'models/story_view_data.dart';
 
 class StoryReaderController extends ChangeNotifier {
-  /// Page state
+  final StoryService _service;
+
+  // Snapshot settings for the session (needed for continue)
+  final String _ageGroup; // "3_5"
+  final String _storyLang; // "ru|en|hy"
+  final String _storyLength; // "short|medium|long"
+  final double _creativityLevel; // 0..1
+  final bool _imageEnabled;
+
+  final String _hero;
+  final String _location;
+  final String _style;
+
   bool isLoading = false;
   String? error;
   StoryViewData? data;
 
-  /// UI prefs
   double textScale = 1.0;
-
-  /// Narration (stub for now)
   bool narrationPlaying = false;
-
-  /// Background music (stub for now)
   bool musicEnabled = false;
-
-  /// Optional: store last chosen option
   String? lastChoiceId;
 
-  /// Load initial story (temporary mock; next step will fetch from Cloud Function)
-  Future<void> loadInitial() async {
+  StoryReaderController({
+    required StoryService service,
+    required String ageGroup,
+    required String storyLang,
+    required String storyLength,
+    required double creativityLevel,
+    required bool imageEnabled,
+    required String hero,
+    required String location,
+    required String style,
+  }) : _service = service,
+       _ageGroup = ageGroup,
+       _storyLang = storyLang,
+       _storyLength = storyLength,
+       _creativityLevel = creativityLevel,
+       _imageEnabled = imageEnabled,
+       _hero = hero,
+       _location = location,
+       _style = style;
+
+  /// Use this if you open StoryReader with response from Generate
+  void loadFromAgentResponse(GenerateStoryResponse resp) {
+    data = _toViewData(resp);
+    error = null;
+    isLoading = false;
+    narrationPlaying = false;
+    notifyListeners();
+  }
+
+  /// If you prefer loading inside reader: pass initialBody same as in curl (action=generate)
+  Future<void> loadInitial(Map<String, dynamic> initialBody) async {
+    if (isLoading) return;
     isLoading = true;
     error = null;
     notifyListeners();
 
     try {
-      // Simulate network delay
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-
-      data = StoryViewData(
-        storyId: 'demo_story_001',
-        title: 'Story',
-        coverImageUrl: null, // put URL later
-        chapterIndex: 0,
-        progress: 0.1,
-        text:
-            'Once upon a time, in a calm forest, a little hero began an adventure.\n\n'
-            'This is placeholder text. In the next step we will connect AI so this '
-            'content comes from your Cloud Function.\n\n'
-            'Below you can choose what happens next.',
-        choices: [
-          StoryChoiceViewData(
-            id: 'choice_castle',
-            label: 'Go to the castle',
-            payload: {'next': 'castle'},
-          ),
-          StoryChoiceViewData(
-            id: 'choice_bear',
-            label: 'Talk to the friendly bear',
-            payload: {'next': 'bear'},
-          ),
-          StoryChoiceViewData(
-            id: 'choice_forest',
-            label: 'Take the forest path',
-            payload: {'next': 'forest'},
-          ),
-        ],
-        isFinal: false,
-      );
+      final json = await _service.callAgentJson(initialBody);
+      final resp = GenerateStoryResponse.fromJson(json);
+      data = _toViewData(resp);
     } catch (e) {
       error = e.toString();
+      debugPrint('StoryReader loadInitial error: $e');
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Choice selected -> next chapter (mock for now)
+  /// Choice selected -> agent continue -> update current page (no navigation)
   Future<void> onChoiceSelected(StoryChoiceViewData choice) async {
-    if (isLoading) return;
+    final current = data;
+    if (current == null || isLoading) return;
 
     isLoading = true;
     error = null;
@@ -80,77 +89,66 @@ class StoryReaderController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Simulate request to AI
-      await Future<void>.delayed(const Duration(milliseconds: 450));
+      final body = <String, dynamic>{
+        'action': 'continue',
+        'storyId': current.storyId,
+        'chapterIndex': current.chapterIndex,
+        'ageGroup': _ageGroup,
+        'storyLang': _storyLang,
+        'storyLength': _storyLength,
+        'creativityLevel': _creativityLevel,
+        'image': {'enabled': _imageEnabled},
+        'selection': {'hero': _hero, 'location': _location, 'style': _style},
+        'choice': {'id': choice.id, 'payload': choice.payload},
+      };
 
-      final prev = data;
-      final nextChapter = (prev?.chapterIndex ?? 0) + 1;
+      final json = await _service.callAgentJson(body);
+      final resp = GenerateStoryResponse.fromJson(json);
 
-      // Make progress look natural for demo
-      final nextProgress = min(1.0, (prev?.progress ?? 0.0) + 0.15);
-
-      data = StoryViewData(
-        storyId: prev?.storyId ?? 'demo_story_001',
-        title: prev?.title ?? 'Story',
-        coverImageUrl: prev?.coverImageUrl,
-        chapterIndex: nextChapter,
-        progress: nextProgress,
-        text:
-            'You chose: "${choice.label}".\n\n'
-            'This is the next generated chapter (placeholder). '
-            'Next step: replace this with the real Cloud Function response.\n\n'
-            'Chapter $nextChapter continues the story based on the chosen path.',
-        choices: _nextChoicesForDemo(nextChapter),
-        isFinal: nextProgress >= 1.0,
-      );
-
-      // Auto-stop narration between chapters (stub behavior)
+      data = _toViewData(resp);
       narrationPlaying = false;
     } catch (e) {
-      error = e.toString();
+      error = 'Failed to continue story: $e';
+      debugPrint(error);
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  List<StoryChoiceViewData> _nextChoicesForDemo(int chapter) {
-    // After some chapters we can end demo
-    if (chapter >= 4) {
-      return const [];
-    }
+  StoryViewData _toViewData(GenerateStoryResponse resp) {
+    final choiceViews = (resp.choices ?? const [])
+        .where((c) => (c.label ?? '').toString().trim().isNotEmpty)
+        .map(
+          (c) => StoryChoiceViewData(
+            id: (c.id ?? '').toString(),
+            label: (c.label ?? '').toString(),
+            payload: c.payload ?? const <String, dynamic>{},
+          ),
+        )
+        .toList(growable: false);
 
-    return [
-      StoryChoiceViewData(
-        id: 'choice_a',
-        label: 'Continue carefully',
-        payload: {'next': 'carefully'},
-      ),
-      StoryChoiceViewData(
-        id: 'choice_b',
-        label: 'Ask for help',
-        payload: {'next': 'help'},
-      ),
-      StoryChoiceViewData(
-        id: 'choice_c',
-        label: 'Explore something new',
-        payload: {'next': 'explore'},
-      ),
-    ];
+    // Use image property from response
+    final coverUrl = resp.image?.url;
+
+    return StoryViewData(
+      storyId: resp.storyId ?? 'unknown',
+      title: (resp.title ?? 'Story').toString(),
+      coverImageUrl: coverUrl,
+      chapterIndex: resp.chapterIndex ?? 0,
+      progress: (resp.progress ?? 0.0).clamp(0.0, 1.0),
+      text: (resp.text ?? '').toString(),
+      choices: choiceViews,
+      isFinal: choiceViews.isEmpty,
+    );
   }
 
-  /// Narration control (stub for now)
   void toggleNarration() {
-    // Later: call NarrationService (TTS/AI voice)
     narrationPlaying = !narrationPlaying;
-
-    // If narration starts, apply "ducking" to music later.
     notifyListeners();
   }
 
-  /// Music control (stub for now)
   void toggleMusic() {
-    // Later: call MusicService (background audio + audio_service)
     musicEnabled = !musicEnabled;
     notifyListeners();
   }

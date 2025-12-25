@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
 import 'router.dart';
@@ -7,6 +8,8 @@ import '../shared/settings/app_settings.dart';
 import '../shared/settings/in_memory_settings_repository.dart';
 import '../shared/settings/settings_controller.dart';
 import '../shared/settings/settings_scope.dart';
+
+import '../features/story/services/story_service.dart';
 
 class KidsTelApp extends StatefulWidget {
   const KidsTelApp({super.key});
@@ -17,6 +20,11 @@ class KidsTelApp extends StatefulWidget {
 
 class _KidsTelAppState extends State<KidsTelApp> {
   late final SettingsController _settings;
+
+  static const String _agentUrl = String.fromEnvironment(
+    'STORY_AGENT_URL',
+    defaultValue: 'https://llm-generateitem-fjnopublia-uc.a.run.app',
+  );
 
   @override
   void initState() {
@@ -43,8 +51,6 @@ class _KidsTelAppState extends State<KidsTelApp> {
   }
 
   Locale? _localeFromCode(String code) {
-    // Если язык "system" будет добавлен — вернем null (MaterialApp возьмёт системный)
-    // Сейчас используем фиксированный набор:
     switch (code) {
       case 'ru':
         return const Locale('ru');
@@ -60,40 +66,43 @@ class _KidsTelAppState extends State<KidsTelApp> {
   Widget build(BuildContext context) {
     final router = buildRouter();
 
-    return SettingsScope(
-      controller: _settings,
-      child: AnimatedBuilder(
-        animation: _settings,
-        builder: (context, _) {
-          final s = _settings.settings;
-          final factor = _fontFactorFromScale(s.fontScale);
+    return Provider<StoryService>(
+      create: (_) => StoryService(endpointUrl: _agentUrl),
+      child: SettingsScope(
+        controller: _settings,
+        child: AnimatedBuilder(
+          animation: _settings,
+          builder: (context, _) {
+            final s = _settings.settings;
+            final factor = _fontFactorFromScale(s.fontScale);
 
-          return MaterialApp.router(
-            debugShowCheckedModeBanner: false,
+            return MaterialApp.router(
+              debugShowCheckedModeBanner: false,
 
-            // Theme
-            themeMode: s.themeMode,
-            theme: ThemeData.light(),
-            darkTheme: ThemeData.dark(),
+              // Theme
+              themeMode: s.themeMode,
+              theme: ThemeData.light(),
+              darkTheme: ThemeData.dark(),
 
-            // Localization
-            locale: _localeFromCode(s.defaultLanguageCode),
-            supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+              // Localization
+              locale: _localeFromCode(s.defaultLanguageCode),
+              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
 
-            // Router
-            routerConfig: router,
+              // Router
+              routerConfig: router,
 
-            // Global font scaling (applies everywhere)
-            builder: (context, child) {
-              final mq = MediaQuery.of(context);
-              return MediaQuery(
-                data: mq.copyWith(textScaler: TextScaler.linear(factor)),
-                child: child ?? const SizedBox.shrink(),
-              );
-            },
-          );
-        },
+              // Global font scaling
+              builder: (context, child) {
+                final mq = MediaQuery.of(context);
+                return MediaQuery(
+                  data: mq.copyWith(textScaler: TextScaler.linear(factor)),
+                  child: child ?? const SizedBox.shrink(),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

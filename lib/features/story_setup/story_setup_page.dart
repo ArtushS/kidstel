@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -6,6 +8,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../l10n/app_localizations.dart';
 
 import '../../shared/settings/settings_scope.dart';
+import '../story/services/story_service.dart';
+import '../story/services/models/generate_story_response.dart';
 
 class StorySetupPage extends StatefulWidget {
   const StorySetupPage({super.key});
@@ -15,8 +19,15 @@ class StorySetupPage extends StatefulWidget {
 }
 
 class _StorySetupPageState extends State<StorySetupPage> {
+  static const String _agentEndpoint = String.fromEnvironment(
+    'STORY_AGENT_URL',
+    defaultValue: 'https://llm-generateitem-fjnopublia-uc.a.run.app',
+  );
+
   final _ideaCtrl = TextEditingController();
   final _ideaFocus = FocusNode();
+
+  bool _isGenerating = false;
 
   Future<void> _warmUpIcons() async {
     final heroes = _getHeroes(context);
@@ -236,8 +247,74 @@ class _StorySetupPageState extends State<StorySetupPage> {
     return pool[r.nextInt(pool.length)];
   }
 
+  String _mapAgeGroup(dynamic v) {
+    final s = (v ?? '').toString().toLowerCase();
+
+    // supports: "3-5", "3_5", "age3to5", etc.
+    if (s.contains('3') && (s.contains('5') || s.contains('5'))) return '3_5';
+    if (s.contains('6') && s.contains('8')) return '6_8';
+    if (s.contains('9') && s.contains('12')) return '9_12';
+
+    // default
+    return '3_5';
+  }
+
+  String _mapStoryLength(dynamic v) {
+    final s = (v ?? '').toString().toLowerCase();
+
+    if (s.contains('short')) return 'short';
+    if (s.contains('medium')) return 'medium';
+    if (s.contains('long')) return 'long';
+
+    // RU labels (if stored as strings)
+    if (s.contains('корот')) return 'short';
+    if (s.contains('сред')) return 'medium';
+    if (s.contains('длин')) return 'long';
+
+    return 'medium';
+  }
+
+  String _mapComplexity(dynamic v) {
+    final s = (v ?? '').toString().toLowerCase();
+
+    if (s.contains('simple')) return 'simple';
+    if (s.contains('normal')) return 'normal';
+
+    // RU labels
+    if (s.contains('прост')) return 'simple';
+    if (s.contains('норм')) return 'normal';
+
+    return 'normal';
+  }
+
+  double _mapCreativity(dynamic v) {
+    final s = (v ?? '').toString().toLowerCase();
+
+    if (s.contains('low')) return 0.35;
+    if (s.contains('normal')) return 0.65;
+    if (s.contains('high')) return 0.9;
+
+    // RU labels
+    if (s.contains('низ')) return 0.35;
+    if (s.contains('норм')) return 0.65;
+    if (s.contains('выс')) return 0.9;
+
+    // If stored as number (0..1 or 1..10)
+    final n = double.tryParse(s);
+    if (n != null) {
+      if (n <= 1.0) return n.clamp(0.0, 1.0);
+      // assume 1..10
+      return (n / 10.0).clamp(0.0, 1.0);
+    }
+
+    return 0.65;
+  }
+
   Future<void> _onGenerate(BuildContext context) async {
     if (!_canGenerate(context)) return;
+
+    debugPrint('Generate pressed: entering _onGenerate()');
+    debugPrint('Agent URL = $_agentEndpoint');
 
     final t = AppLocalizations.of(context)!;
     final idea = _ideaCtrl.text.trim();
@@ -254,24 +331,75 @@ class _StorySetupPageState extends State<StorySetupPage> {
     final loc = _resolveRandomIfNeeded(rawLoc, locations);
     final type = rawType;
 
-    final summary = (idea.isNotEmpty)
-        ? 'IDEA MODE:\n$idea'
-        : 'PICKS MODE:\nHero: ${hero.title}\nLocation: ${loc.title}\nType: ${type.title}';
+    final settings = SettingsScope.of(context).settings;
 
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(t.generateRequestMVP),
-        content: Text(summary),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(t.ok),
-          ),
-        ],
-      ),
-    );
+    final body = <String, dynamic>{
+      'action': 'generate',
+      'ageGroup': _mapAgeGroup(settings.ageGroup),
+      'storyLang': settings.defaultLanguageCode,
+      'storyLength': _mapStoryLength(settings.storyLength),
+      'creativityLevel': _mapCreativity(settings.creativityLevel),
+      'image': {'enabled': settings.autoIllustrations},
+      'selection': {
+        'hero': hero.title,
+        'location': loc.title,
+        'style': type.title,
+      },
+    };
+
+    if (idea.isNotEmpty) {
+      body['idea'] = idea;
+    }
+
+    final service = StoryService(endpointUrl: _agentEndpoint);
+
+    setState(() => _isGenerating = true);
+
+    try {
+      final json = await service.callAgentJson(body);
+      final resp = GenerateStoryResponse.fromJson(json);
+
+      if (!mounted) return;
+
+      // Pass settings to StoryReaderPage via extra
+      context.push(
+        '/story-reader',
+        extra: {
+          'response': resp,
+          'ageGroup': _mapAgeGroup(settings.ageGroup),
+          'lang': settings.defaultLanguageCode,
+          'length': _mapStoryLength(settings.storyLength),
+          'creativity': _mapCreativity(settings.creativityLevel),
+          'imageEnabled': settings.autoIllustrations,
+          'hero': hero.title,
+          'location': loc.title,
+          'style': type.title,
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      final title = 'Generation failed';
+      final msg = e.toString();
+
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text(title),
+          content: Text(msg),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isGenerating = false);
+      }
+    }
   }
 
   void _handleBack() {
@@ -400,9 +528,9 @@ class _StorySetupPageState extends State<StorySetupPage> {
               ),
             ),
             _BottomBar(
-              enabled: _canGenerate(context),
+              enabled: _canGenerate(context) && !_isGenerating,
               onGenerate: () => _onGenerate(context),
-              label: t.generate,
+              label: _isGenerating ? 'Generating...' : t.generate,
             ),
           ],
         ),

@@ -6,14 +6,54 @@ import 'story_reader_controller.dart';
 import 'models/story_view_data.dart';
 
 class StoryReaderPage extends StatelessWidget {
-  const StoryReaderPage({super.key});
+  final dynamic service;
+  final String ageGroup;
+  final String storyLang;
+  final String storyLength;
+  final double creativityLevel;
+  final bool imageEnabled;
+  final String hero;
+  final String location;
+  final String style;
+
+  const StoryReaderPage({
+    super.key,
+    required this.service,
+    required this.ageGroup,
+    required this.storyLang,
+    required this.storyLength,
+    required this.creativityLevel,
+    required this.imageEnabled,
+    required this.hero,
+    required this.location,
+    required this.style,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
     return ChangeNotifierProvider<StoryReaderController>(
-      create: (_) => StoryReaderController()..loadInitial(),
+      create: (_) => StoryReaderController(
+        service: service,
+        ageGroup: ageGroup,
+        storyLang: storyLang,
+        storyLength: storyLength,
+        creativityLevel: creativityLevel,
+        imageEnabled: imageEnabled,
+        hero: hero,
+        location: location,
+        style: style,
+      )..loadInitial({
+        'ageGroup': ageGroup,
+        'storyLang': storyLang,
+        'storyLength': storyLength,
+        'creativityLevel': creativityLevel,
+        'imageEnabled': imageEnabled,
+        'hero': hero,
+        'location': location,
+        'style': style,
+      }),
       child: Scaffold(
         appBar: AppBar(
           leading: const BackButton(),

@@ -38,7 +38,21 @@ GoRouter buildRouter() {
       GoRoute(
         path: '/story-reader',
         name: 'story-reader',
-        builder: (context, state) => const StoryReaderPage(),
+        builder: (context, state) {
+          final extra = state.extra;
+          final setup = extra is StorySetup ? extra : null;
+          return StoryReaderPage(
+            service: setup?.service ?? '',
+            ageGroup: setup?.ageGroup ?? '',
+            storyLang: setup?.storyLang ?? '',
+            storyLength: setup?.storyLength ?? '',
+            creativityLevel: setup?.creativityLevel ?? 0.5,
+            imageEnabled: setup?.imageEnabled ?? false,
+            hero: setup?.hero ?? '',
+            location: setup?.location ?? '',
+            style: setup?.style ?? '',
+          );
+        },
       ),
     ],
     errorPageBuilder: (context, state) {
