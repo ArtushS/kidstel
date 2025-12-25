@@ -59,8 +59,8 @@ class _NeumorphicCircleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: homeCircleDiameter,
-        height: homeCircleDiameter,
+        width: kHomeCircleDiameter,
+        height: kHomeCircleDiameter,
         decoration: BoxDecoration(
           color: bg,
           shape: BoxShape.circle,
@@ -87,7 +87,7 @@ class _NeumorphicCircleButton extends StatelessWidget {
               child: Text(
                 label,
                 textAlign: TextAlign.center,
-                maxLines: homeCircleLabelMaxLines,
+                maxLines: kHomeCircleLabelMaxLines,
                 overflow: TextOverflow.ellipsis,
                 style: (theme.textTheme.titleLarge ?? const TextStyle())
                     .copyWith(

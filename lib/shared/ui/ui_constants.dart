@@ -7,16 +7,16 @@
 ///
 /// Keeping this constant ensures long localized labels never change the card
 /// width; instead, text wraps/ellipsizes within the card.
-const double carouselItemWidth = 170;
+const double kCarouselItemWidth = 270;
 
 /// PageView viewport fraction for horizontal carousels.
 ///
 /// This is tuned to show a hint of neighboring cards without making the active
 /// card overly wide or overly narrow.
-const double carouselViewportFraction = 0.78;
+const double kCarouselViewportFraction = 0.78;
 
 /// Diameter of the big circular buttons on the Home page.
-const double homeCircleDiameter = 220;
+const double kHomeCircleDiameter = 220;
 
 /// Max lines for labels inside the Home page circles.
-const int homeCircleLabelMaxLines = 3;
+const int kHomeCircleLabelMaxLines = 3;

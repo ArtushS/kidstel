@@ -804,7 +804,7 @@ class _CarouselSection extends StatelessWidget {
       // Keep item sizing stable across i18n/long labels.
       // The item itself has a fixed width below; viewportFraction should match
       // the reference value so pages don't become unexpectedly "fat".
-      viewportFraction: carouselViewportFraction,
+      viewportFraction: kCarouselViewportFraction,
       initialPage: initialPage,
     );
 
@@ -851,7 +851,7 @@ class _CarouselSection extends StatelessWidget {
                   child: SizedBox(
                     // Fixed item width (universal rule for horizontal carousels)
                     // so long localized text cannot change layout.
-                    width: carouselItemWidth,
+                    width: kCarouselItemWidth,
                     child: _PickCard(item: items[index], isDark: isDark),
                   ),
                 ),
