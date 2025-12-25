@@ -1,10 +1,9 @@
-import 'dart:io';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 
 import '../../shared/settings/settings_scope.dart';
@@ -19,11 +18,6 @@ class StorySetupPage extends StatefulWidget {
 }
 
 class _StorySetupPageState extends State<StorySetupPage> {
-  static const String _agentEndpoint = String.fromEnvironment(
-    'STORY_AGENT_URL',
-    defaultValue: 'https://llm-generateitem-fjnopublia-uc.a.run.app',
-  );
-
   final _ideaCtrl = TextEditingController();
   final _ideaFocus = FocusNode();
 
@@ -274,19 +268,6 @@ class _StorySetupPageState extends State<StorySetupPage> {
     return 'medium';
   }
 
-  String _mapComplexity(dynamic v) {
-    final s = (v ?? '').toString().toLowerCase();
-
-    if (s.contains('simple')) return 'simple';
-    if (s.contains('normal')) return 'normal';
-
-    // RU labels
-    if (s.contains('прост')) return 'simple';
-    if (s.contains('норм')) return 'normal';
-
-    return 'normal';
-  }
-
   double _mapCreativity(dynamic v) {
     final s = (v ?? '').toString().toLowerCase();
 
@@ -314,9 +295,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
     if (!_canGenerate(context)) return;
 
     debugPrint('Generate pressed: entering _onGenerate()');
-    debugPrint('Agent URL = $_agentEndpoint');
 
-    final t = AppLocalizations.of(context)!;
     final idea = _ideaCtrl.text.trim();
 
     final heroes = _getHeroes(context);
@@ -351,7 +330,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
       body['idea'] = idea;
     }
 
-    final service = StoryService(endpointUrl: _agentEndpoint);
+    final service = context.read<StoryService>();
 
     setState(() => _isGenerating = true);
 

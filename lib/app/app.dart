@@ -10,6 +10,7 @@ import '../shared/settings/settings_controller.dart';
 import '../shared/settings/settings_scope.dart';
 
 import '../features/story/services/story_service.dart';
+import 'config.dart';
 
 class KidsTelApp extends StatefulWidget {
   const KidsTelApp({super.key});
@@ -20,11 +21,6 @@ class KidsTelApp extends StatefulWidget {
 
 class _KidsTelAppState extends State<KidsTelApp> {
   late final SettingsController _settings;
-
-  static const String _agentUrl = String.fromEnvironment(
-    'STORY_AGENT_URL',
-    defaultValue: 'https://llm-generateitem-fjnopublia-uc.a.run.app',
-  );
 
   @override
   void initState() {
@@ -66,8 +62,13 @@ class _KidsTelAppState extends State<KidsTelApp> {
   Widget build(BuildContext context) {
     final router = buildRouter();
 
-    return Provider<StoryService>(
-      create: (_) => StoryService(endpointUrl: _agentUrl),
+    return MultiProvider(
+      providers: [
+        Provider<StoryService>(
+          create: (_) => StoryService(endpointUrl: STORY_AGENT_URL),
+        ),
+        // другие провайдеры...
+      ],
       child: SettingsScope(
         controller: _settings,
         child: AnimatedBuilder(

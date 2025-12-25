@@ -2,58 +2,61 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../story/services/story_service.dart';
+import 'story_reader_args.dart';
 import 'story_reader_controller.dart';
 import 'models/story_view_data.dart';
 
 class StoryReaderPage extends StatelessWidget {
-  final dynamic service;
-  final String ageGroup;
-  final String storyLang;
-  final String storyLength;
-  final double creativityLevel;
-  final bool imageEnabled;
-  final String hero;
-  final String location;
-  final String style;
+  final StoryReaderArgs? args;
 
-  const StoryReaderPage({
-    super.key,
-    required this.service,
-    required this.ageGroup,
-    required this.storyLang,
-    required this.storyLength,
-    required this.creativityLevel,
-    required this.imageEnabled,
-    required this.hero,
-    required this.location,
-    required this.style,
-  });
+  const StoryReaderPage({super.key, this.args});
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final a = args;
 
     return ChangeNotifierProvider<StoryReaderController>(
-      create: (_) => StoryReaderController(
-        service: service,
-        ageGroup: ageGroup,
-        storyLang: storyLang,
-        storyLength: storyLength,
-        creativityLevel: creativityLevel,
-        imageEnabled: imageEnabled,
-        hero: hero,
-        location: location,
-        style: style,
-      )..loadInitial({
-        'ageGroup': ageGroup,
-        'storyLang': storyLang,
-        'storyLength': storyLength,
-        'creativityLevel': creativityLevel,
-        'imageEnabled': imageEnabled,
-        'hero': hero,
-        'location': location,
-        'style': style,
-      }),
+      create: (ctx) {
+        final ageGroup = a?.ageGroup ?? '';
+        final storyLang = a?.storyLang ?? '';
+        final storyLength = a?.storyLength ?? '';
+        final creativityLevel = a?.creativityLevel ?? 0.5;
+        final imageEnabled = a?.imageEnabled ?? false;
+        final hero = a?.hero ?? '';
+        final location = a?.location ?? '';
+        final style = a?.style ?? '';
+
+        final controller = StoryReaderController(
+          storyService: ctx.read<StoryService>(),
+          ageGroup: ageGroup,
+          storyLang: storyLang,
+          storyLength: storyLength,
+          creativityLevel: creativityLevel,
+          imageEnabled: imageEnabled,
+          hero: hero,
+          location: location,
+          style: style,
+        );
+
+        final resp = a?.initialResponse;
+        if (resp != null) {
+          controller.loadFromAgentResponse(resp);
+        } else if (a != null) {
+          controller.loadInitial({
+            'action': 'generate',
+            'ageGroup': ageGroup,
+            'storyLang': storyLang,
+            'storyLength': storyLength,
+            'creativityLevel': creativityLevel,
+            'image': {'enabled': imageEnabled},
+            'selection': {'hero': hero, 'location': location, 'style': style},
+          });
+        }
+
+        return controller;
+      },
       child: Scaffold(
         appBar: AppBar(
           leading: const BackButton(),
@@ -86,8 +89,16 @@ class _StoryReaderBody extends StatelessWidget {
       return Center(child: Text(controller.error!));
     }
 
+    if (controller.data == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('No story loaded yet'),
+        ),
+      );
+    }
+
     final data = controller.data!;
-    final theme = Theme.of(context);
 
     return CustomScrollView(
       slivers: [
@@ -232,9 +243,15 @@ class _BottomInteractionPanel extends StatelessWidget {
                     ),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(choice.label),
+                      Expanded(
+                        child: Text(
+                          choice.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       const Icon(Icons.chevron_right),
                     ],
                   ),

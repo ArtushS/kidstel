@@ -7,7 +7,7 @@ import 'models/story_choice_view_data.dart';
 import 'models/story_view_data.dart';
 
 class StoryReaderController extends ChangeNotifier {
-  final StoryService _service;
+  final StoryService storyService;
 
   // Snapshot settings for the session (needed for continue)
   final String _ageGroup; // "3_5"
@@ -30,7 +30,7 @@ class StoryReaderController extends ChangeNotifier {
   String? lastChoiceId;
 
   StoryReaderController({
-    required StoryService service,
+    required this.storyService,
     required String ageGroup,
     required String storyLang,
     required String storyLength,
@@ -39,8 +39,7 @@ class StoryReaderController extends ChangeNotifier {
     required String hero,
     required String location,
     required String style,
-  }) : _service = service,
-       _ageGroup = ageGroup,
+  }) : _ageGroup = ageGroup,
        _storyLang = storyLang,
        _storyLength = storyLength,
        _creativityLevel = creativityLevel,
@@ -66,7 +65,7 @@ class StoryReaderController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final json = await _service.callAgentJson(initialBody);
+      final json = await storyService.callAgentJson(initialBody);
       final resp = GenerateStoryResponse.fromJson(json);
       data = _toViewData(resp);
     } catch (e) {
@@ -102,7 +101,7 @@ class StoryReaderController extends ChangeNotifier {
         'choice': {'id': choice.id, 'payload': choice.payload},
       };
 
-      final json = await _service.callAgentJson(body);
+      final json = await storyService.callAgentJson(body);
       final resp = GenerateStoryResponse.fromJson(json);
 
       data = _toViewData(resp);
@@ -117,14 +116,11 @@ class StoryReaderController extends ChangeNotifier {
   }
 
   StoryViewData _toViewData(GenerateStoryResponse resp) {
-    final choiceViews = (resp.choices ?? const [])
-        .where((c) => (c.label ?? '').toString().trim().isNotEmpty)
+    final choiceViews = resp.choices
+        .where((c) => c.label.trim().isNotEmpty)
         .map(
-          (c) => StoryChoiceViewData(
-            id: (c.id ?? '').toString(),
-            label: (c.label ?? '').toString(),
-            payload: c.payload ?? const <String, dynamic>{},
-          ),
+          (c) =>
+              StoryChoiceViewData(id: c.id, label: c.label, payload: c.payload),
         )
         .toList(growable: false);
 
@@ -132,12 +128,12 @@ class StoryReaderController extends ChangeNotifier {
     final coverUrl = resp.image?.url;
 
     return StoryViewData(
-      storyId: resp.storyId ?? 'unknown',
-      title: (resp.title ?? 'Story').toString(),
+      storyId: resp.storyId.isNotEmpty ? resp.storyId : 'unknown',
+      title: resp.title.isNotEmpty ? resp.title : 'Story',
       coverImageUrl: coverUrl,
-      chapterIndex: resp.chapterIndex ?? 0,
-      progress: (resp.progress ?? 0.0).clamp(0.0, 1.0),
-      text: (resp.text ?? '').toString(),
+      chapterIndex: resp.chapterIndex,
+      progress: resp.progress.clamp(0.0, 1.0),
+      text: resp.text,
       choices: choiceViews,
       isFinal: choiceViews.isEmpty,
     );

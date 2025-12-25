@@ -4,9 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../l10n/app_localizations.dart';
 import '../features/home/home_page.dart';
 import '../features/story_setup/story_setup_page.dart';
-import '../features/reader/reader_page.dart';
 import '../features/settings/settings_page.dart';
 import '../shared/models/story_setup.dart';
+import '../features/story_reader/story_reader_args.dart';
 import '../features/story_reader/story_reader_page.dart';
 
 GoRouter buildRouter() {
@@ -24,11 +24,8 @@ GoRouter buildRouter() {
       ),
       GoRoute(
         path: '/reader',
-        pageBuilder: (context, state) {
-          final extra = state.extra;
-          final setup = extra is StorySetup ? extra : null;
-          return MaterialPage(child: ReaderPage(setup: setup));
-        },
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: StoryReaderPage()),
       ),
       GoRoute(
         path: '/settings',
@@ -41,17 +38,24 @@ GoRouter buildRouter() {
         builder: (context, state) {
           final extra = state.extra;
           final setup = extra is StorySetup ? extra : null;
-          return StoryReaderPage(
-            service: setup?.service ?? '',
-            ageGroup: setup?.ageGroup ?? '',
-            storyLang: setup?.storyLang ?? '',
-            storyLength: setup?.storyLength ?? '',
-            creativityLevel: setup?.creativityLevel ?? 0.5,
-            imageEnabled: setup?.imageEnabled ?? false,
-            hero: setup?.hero ?? '',
-            location: setup?.location ?? '',
-            style: setup?.style ?? '',
+
+          // StorySetupPage currently navigates with a Map payload.
+          final map = extra is Map ? extra : null;
+          final args = StoryReaderArgs(
+            initialResponse: map?['response'],
+            ageGroup: (map?['ageGroup'] ?? setup?.ageGroup ?? '') as String,
+            storyLang: (map?['lang'] ?? setup?.storyLang ?? '') as String,
+            storyLength: (map?['length'] ?? setup?.storyLength ?? '') as String,
+            creativityLevel:
+                (map?['creativity'] ?? setup?.creativityLevel ?? 0.5) as double,
+            imageEnabled:
+                (map?['imageEnabled'] ?? setup?.imageEnabled ?? false) as bool,
+            hero: (map?['hero'] ?? setup?.hero ?? '') as String,
+            location: (map?['location'] ?? setup?.location ?? '') as String,
+            style: (map?['style'] ?? setup?.style ?? '') as String,
           );
+
+          return StoryReaderPage(args: args);
         },
       ),
     ],
