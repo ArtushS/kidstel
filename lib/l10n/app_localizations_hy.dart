@@ -353,4 +353,29 @@ class AppLocalizationsHy extends AppLocalizations {
 
   @override
   String get chooseWhatNext => 'Ընտրիր՝ ինչ կլինի հետո․';
+
+  @override
+  String get readAloud => 'Կարդալ';
+
+  @override
+  String get stopReading => 'Կանգնեցնել';
+
+  @override
+  String get illustration => 'Նկարազարդում';
+
+  @override
+  String get generateImage => 'Ստեղծել պատկեր';
+
+  @override
+  String get retry => 'Կրկին փորձել';
+
+  @override
+  String get saveToMyStories => 'Պահել Իմ հեքիաթները';
+
+  @override
+  String get interactiveStories => 'Միացնել ինտերակտիվ պատմությունները';
+
+  @override
+  String get interactiveStoriesSubtitle =>
+      'Ցուցադրել ընտրանքներ (մինչև 3 քայլ)՝ պատմությունը շարունակելու համար';
 }

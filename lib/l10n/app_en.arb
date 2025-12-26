@@ -112,5 +112,15 @@
   "stay": "Stay",
   "notFound": "Not found",
   "story": "Story",
-  "chooseWhatNext": "Choose what happens next:"
+  "chooseWhatNext": "Choose what happens next:",
+
+  "readAloud": "Read",
+  "stopReading": "Stop",
+  "illustration": "Illustration",
+  "generateImage": "Generate image",
+  "retry": "Retry",
+  "saveToMyStories": "Save to My Stories",
+
+  "interactiveStories": "Enable interactive stories",
+  "interactiveStoriesSubtitle": "Show choices (up to 3 steps) to continue the story"
 }

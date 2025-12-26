@@ -777,6 +777,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose what happens next:'**
   String get chooseWhatNext;
+
+  /// No description provided for @readAloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Read'**
+  String get readAloud;
+
+  /// No description provided for @stopReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get stopReading;
+
+  /// No description provided for @illustration.
+  ///
+  /// In en, this message translates to:
+  /// **'Illustration'**
+  String get illustration;
+
+  /// No description provided for @generateImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate image'**
+  String get generateImage;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @saveToMyStories.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to My Stories'**
+  String get saveToMyStories;
+
+  /// No description provided for @interactiveStories.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable interactive stories'**
+  String get interactiveStories;
+
+  /// No description provided for @interactiveStoriesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show choices (up to 3 steps) to continue the story'**
+  String get interactiveStoriesSubtitle;
 }
 
 class _AppLocalizationsDelegate

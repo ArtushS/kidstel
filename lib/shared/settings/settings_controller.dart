@@ -50,6 +50,9 @@ class SettingsController extends ChangeNotifier {
   Future<void> setDefaultLanguageCode(String code) =>
       _update(_settings.copyWith(defaultLanguageCode: code));
 
+  Future<void> setInteractiveStoriesEnabled(bool value) =>
+      _update(_settings.copyWith(interactiveStoriesEnabled: value));
+
   // Audio
   Future<void> setVoiceNarrationEnabled(bool value) =>
       _update(_settings.copyWith(voiceNarrationEnabled: value));

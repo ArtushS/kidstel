@@ -112,5 +112,14 @@
   "stay": "Մնալ",
   "notFound": "Չի գտնվել",
   "story": "Պատմություն",
-  "chooseWhatNext": "Ընտրիր՝ ինչ կլինի հետո․"
+  "chooseWhatNext": "Ընտրիր՝ ինչ կլինի հետո․",
+  "readAloud": "Կարդալ",
+  "stopReading": "Կանգնեցնել",
+  "illustration": "Նկարազարդում",
+  "generateImage": "Ստեղծել պատկեր",
+  "retry": "Կրկին փորձել",
+  "saveToMyStories": "Պահել Իմ հեքիաթները",
+
+  "interactiveStories": "Միացնել ինտերակտիվ պատմությունները",
+  "interactiveStoriesSubtitle": "Ցուցադրել ընտրանքներ (մինչև 3 քայլ)՝ պատմությունը շարունակելու համար"
 }

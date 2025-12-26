@@ -6,6 +6,10 @@ import '../story/services/models/generate_story_response.dart';
 class StoryReaderArgs {
   final GenerateStoryResponse? initialResponse;
 
+  /// If provided, StoryReader should restore a saved story by id
+  /// and ignore generation params.
+  final String? restoreStoryId;
+
   final String ageGroup;
   final String storyLang;
   final String storyLength;
@@ -17,6 +21,7 @@ class StoryReaderArgs {
 
   const StoryReaderArgs({
     this.initialResponse,
+    this.restoreStoryId,
     this.ageGroup = '',
     this.storyLang = '',
     this.storyLength = '',

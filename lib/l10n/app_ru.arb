@@ -112,5 +112,14 @@
   "stay": "Остаться",
   "notFound": "Не найдено",
   "story": "История",
-  "chooseWhatNext": "Выбери, что будет дальше:"
+  "chooseWhatNext": "Выбери, что будет дальше:",
+  "readAloud": "Читать",
+  "stopReading": "Стоп",
+  "illustration": "Иллюстрация",
+  "generateImage": "Сгенерировать изображение",
+  "retry": "Повторить",
+  "saveToMyStories": "Сохранить в Мои истории",
+
+  "interactiveStories": "Включить интерактивные истории",
+  "interactiveStoriesSubtitle": "Показывать варианты выбора (до 3 шагов), чтобы продолжать историю"
 }

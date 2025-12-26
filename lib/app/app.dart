@@ -5,11 +5,19 @@ import '../l10n/app_localizations.dart';
 import 'router.dart';
 
 import '../shared/settings/app_settings.dart';
-import '../shared/settings/in_memory_settings_repository.dart';
+import '../shared/settings/shared_preferences_settings_repository.dart';
 import '../shared/settings/settings_controller.dart';
 import '../shared/settings/settings_scope.dart';
 
 import '../shared/voice/voice_input_controller.dart';
+
+import '../shared/tts/mock_tts_service.dart';
+import '../shared/tts/tts_service.dart';
+
+import '../features/story/repositories/story_repository.dart';
+import '../features/story/repositories/shared_preferences_story_repository.dart';
+import '../features/story/services/image_generation_service.dart';
+import '../features/story/services/mock_image_generation_service.dart';
 
 import '../features/story/services/story_service.dart';
 import 'config.dart';
@@ -27,7 +35,9 @@ class _KidsTelAppState extends State<KidsTelApp> {
   @override
   void initState() {
     super.initState();
-    _settings = SettingsController(repository: InMemorySettingsRepository());
+    _settings = SettingsController(
+      repository: SharedPreferencesSettingsRepository(),
+    );
     _settings.init();
   }
 
@@ -66,6 +76,16 @@ class _KidsTelAppState extends State<KidsTelApp> {
 
     return MultiProvider(
       providers: [
+        Provider<TtsService>(
+          create: (_) => MockTtsService(),
+          dispose: (_, tts) => tts.dispose(),
+        ),
+        Provider<StoryRepository>(
+          create: (_) => SharedPreferencesStoryRepository(),
+        ),
+        Provider<ImageGenerationService>(
+          create: (_) => MockImageGenerationService(),
+        ),
         Provider<StoryService>(
           create: (_) => StoryService(endpointUrl: storyAgentUrl),
         ),

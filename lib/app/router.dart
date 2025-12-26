@@ -6,6 +6,7 @@ import '../features/home/home_page.dart';
 import '../features/story_setup/story_setup_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/settings/voice_help_page.dart';
+import '../features/my_stories/my_stories_page.dart';
 import '../shared/models/story_setup.dart';
 import '../features/story_reader/story_reader_args.dart';
 import '../features/story_reader/story_reader_page.dart';
@@ -26,7 +27,7 @@ GoRouter buildRouter() {
       GoRoute(
         path: '/reader',
         pageBuilder: (context, state) =>
-            const MaterialPage(child: StoryReaderPage()),
+            const MaterialPage(child: MyStoriesPage()),
       ),
       GoRoute(
         path: '/settings',
@@ -49,6 +50,7 @@ GoRouter buildRouter() {
           final map = extra is Map ? extra : null;
           final args = StoryReaderArgs(
             initialResponse: map?['response'],
+            restoreStoryId: map?['storyId']?.toString(),
             ageGroup: (map?['ageGroup'] ?? setup?.ageGroup ?? '') as String,
             storyLang: (map?['lang'] ?? setup?.storyLang ?? '') as String,
             storyLength: (map?['length'] ?? setup?.storyLength ?? '') as String,

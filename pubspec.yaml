@@ -27,6 +27,8 @@ dependencies:
   cached_network_image: ^3.4.1
   provider: ^6.1.5+1
 
+  shared_preferences: ^2.3.3
+
   url_launcher: ^6.3.2
 
 dev_dependencies:

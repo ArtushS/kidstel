@@ -352,4 +352,29 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get chooseWhatNext => 'Выбери, что будет дальше:';
+
+  @override
+  String get readAloud => 'Читать';
+
+  @override
+  String get stopReading => 'Стоп';
+
+  @override
+  String get illustration => 'Иллюстрация';
+
+  @override
+  String get generateImage => 'Сгенерировать изображение';
+
+  @override
+  String get retry => 'Повторить';
+
+  @override
+  String get saveToMyStories => 'Сохранить в Мои истории';
+
+  @override
+  String get interactiveStories => 'Включить интерактивные истории';
+
+  @override
+  String get interactiveStoriesSubtitle =>
+      'Показывать варианты выбора (до 3 шагов), чтобы продолжать историю';
 }

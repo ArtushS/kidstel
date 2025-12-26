@@ -244,6 +244,15 @@ class SettingsPage extends StatelessWidget {
                   }
                 },
               ),
+              SwitchTile(
+                leading: const Icon(Icons.interests_outlined),
+                title: t?.interactiveStories ?? 'Enable interactive stories',
+                subtitle:
+                    t?.interactiveStoriesSubtitle ??
+                    'Show choices (up to 3 steps) to continue the story',
+                value: s.interactiveStoriesEnabled,
+                onChanged: controller.setInteractiveStoriesEnabled,
+              ),
               ChoiceTile<String>(
                 leading: const Icon(Icons.language_outlined),
                 title: titleLanguage,

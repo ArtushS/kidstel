@@ -352,4 +352,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chooseWhatNext => 'Choose what happens next:';
+
+  @override
+  String get readAloud => 'Read';
+
+  @override
+  String get stopReading => 'Stop';
+
+  @override
+  String get illustration => 'Illustration';
+
+  @override
+  String get generateImage => 'Generate image';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get saveToMyStories => 'Save to My Stories';
+
+  @override
+  String get interactiveStories => 'Enable interactive stories';
+
+  @override
+  String get interactiveStoriesSubtitle =>
+      'Show choices (up to 3 steps) to continue the story';
 }

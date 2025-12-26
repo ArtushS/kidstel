@@ -103,6 +103,7 @@ class AppSettings {
   final bool requireParentConfirmation;
 
   final bool autoIllustrations;
+  final bool interactiveStoriesEnabled;
   final CreativityLevel creativityLevel;
   final bool rememberPreferences;
 
@@ -122,6 +123,7 @@ class AppSettings {
     required this.disableScaryContent,
     required this.requireParentConfirmation,
     required this.autoIllustrations,
+    required this.interactiveStoriesEnabled,
     required this.creativityLevel,
     required this.rememberPreferences,
   });
@@ -142,6 +144,7 @@ class AppSettings {
     disableScaryContent: true,
     requireParentConfirmation: true,
     autoIllustrations: true,
+    interactiveStoriesEnabled: true,
     creativityLevel: CreativityLevel.normal,
     rememberPreferences: true,
   );
@@ -162,6 +165,7 @@ class AppSettings {
     bool? disableScaryContent,
     bool? requireParentConfirmation,
     bool? autoIllustrations,
+    bool? interactiveStoriesEnabled,
     CreativityLevel? creativityLevel,
     bool? rememberPreferences,
   }) {
@@ -184,8 +188,93 @@ class AppSettings {
       requireParentConfirmation:
           requireParentConfirmation ?? this.requireParentConfirmation,
       autoIllustrations: autoIllustrations ?? this.autoIllustrations,
+      interactiveStoriesEnabled:
+          interactiveStoriesEnabled ?? this.interactiveStoriesEnabled,
       creativityLevel: creativityLevel ?? this.creativityLevel,
       rememberPreferences: rememberPreferences ?? this.rememberPreferences,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'themeMode': themeMode.name,
+    'fontScale': fontScale.name,
+    'animationsEnabled': animationsEnabled,
+    'ageGroup': ageGroup.name,
+    'storyLength': storyLength.name,
+    'storyComplexity': storyComplexity.name,
+    'defaultLanguageCode': defaultLanguageCode,
+    'voiceNarrationEnabled': voiceNarrationEnabled,
+    'backgroundMusicEnabled': backgroundMusicEnabled,
+    'soundEffectsEnabled': soundEffectsEnabled,
+    'autoPlayNarration': autoPlayNarration,
+    'safeModeEnabled': safeModeEnabled,
+    'disableScaryContent': disableScaryContent,
+    'requireParentConfirmation': requireParentConfirmation,
+    'autoIllustrations': autoIllustrations,
+    'interactiveStoriesEnabled': interactiveStoriesEnabled,
+    'creativityLevel': creativityLevel.name,
+    'rememberPreferences': rememberPreferences,
+  };
+
+  static T _enumByNameOr<T extends Enum>(
+    List<T> values,
+    Object? raw,
+    T fallback,
+  ) {
+    final name = raw?.toString();
+    if (name == null) return fallback;
+    for (final v in values) {
+      if (v.name == name) return v;
+    }
+    return fallback;
+  }
+
+  factory AppSettings.fromJson(Map<String, dynamic> json) {
+    return AppSettings(
+      themeMode: _enumByNameOr(
+        ThemeMode.values,
+        json['themeMode'],
+        ThemeMode.system,
+      ),
+      fontScale: _enumByNameOr(
+        FontScale.values,
+        json['fontScale'],
+        FontScale.medium,
+      ),
+      animationsEnabled: (json['animationsEnabled'] ?? true) as bool,
+      ageGroup: _enumByNameOr(
+        AgeGroup.values,
+        json['ageGroup'],
+        AgeGroup.age3to5,
+      ),
+      storyLength: _enumByNameOr(
+        StoryLength.values,
+        json['storyLength'],
+        StoryLength.medium,
+      ),
+      storyComplexity: _enumByNameOr(
+        StoryComplexity.values,
+        json['storyComplexity'],
+        StoryComplexity.normal,
+      ),
+      defaultLanguageCode: (json['defaultLanguageCode'] ?? 'en') as String,
+      voiceNarrationEnabled: (json['voiceNarrationEnabled'] ?? true) as bool,
+      backgroundMusicEnabled: (json['backgroundMusicEnabled'] ?? false) as bool,
+      soundEffectsEnabled: (json['soundEffectsEnabled'] ?? true) as bool,
+      autoPlayNarration: (json['autoPlayNarration'] ?? false) as bool,
+      safeModeEnabled: (json['safeModeEnabled'] ?? true) as bool,
+      disableScaryContent: (json['disableScaryContent'] ?? true) as bool,
+      requireParentConfirmation:
+          (json['requireParentConfirmation'] ?? true) as bool,
+      autoIllustrations: (json['autoIllustrations'] ?? true) as bool,
+      interactiveStoriesEnabled:
+          (json['interactiveStoriesEnabled'] ?? true) as bool,
+      creativityLevel: _enumByNameOr(
+        CreativityLevel.values,
+        json['creativityLevel'],
+        CreativityLevel.normal,
+      ),
+      rememberPreferences: (json['rememberPreferences'] ?? true) as bool,
     );
   }
 }
