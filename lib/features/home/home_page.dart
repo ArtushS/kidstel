@@ -14,6 +14,22 @@ class HomePage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: bg,
+      appBar: AppBar(
+        backgroundColor: bg,
+        elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: 'Account',
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () => context.go('/account'),
+          ),
+          IconButton(
+            tooltip: t.settings,
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.go('/settings'),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: Column(

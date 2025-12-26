@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../auth/auth_config.dart';
+import '../auth/data/auth_service.dart';
+import '../auth/data/auth_service_firebase.dart';
+import '../auth/state/auth_controller.dart';
+import '../firebase/firebase_bootstrap.dart';
 import '../l10n/app_localizations.dart';
 import 'router.dart';
 
@@ -23,7 +29,9 @@ import '../features/story/services/story_service.dart';
 import 'config.dart';
 
 class KidsTelApp extends StatefulWidget {
-  const KidsTelApp({super.key});
+  final FirebaseBootstrap firebaseBootstrap;
+
+  const KidsTelApp({super.key, required this.firebaseBootstrap});
 
   @override
   State<KidsTelApp> createState() => _KidsTelAppState();
@@ -31,6 +39,9 @@ class KidsTelApp extends StatefulWidget {
 
 class _KidsTelAppState extends State<KidsTelApp> {
   late final SettingsController _settings;
+  late final AuthService _authService;
+  late final AuthController _auth;
+  late final GoRouter _router;
 
   @override
   void initState() {
@@ -39,10 +50,15 @@ class _KidsTelAppState extends State<KidsTelApp> {
       repository: SharedPreferencesSettingsRepository(),
     );
     _settings.init();
+
+    _authService = AuthServiceFirebase();
+    _auth = AuthController(service: _authService, devBypass: kDevBypassAuth);
+    _router = buildRouter(auth: _auth);
   }
 
   @override
   void dispose() {
+    _auth.dispose();
     _settings.dispose();
     super.dispose();
   }
@@ -72,10 +88,11 @@ class _KidsTelAppState extends State<KidsTelApp> {
 
   @override
   Widget build(BuildContext context) {
-    final router = buildRouter();
-
     return MultiProvider(
       providers: [
+        Provider<FirebaseBootstrap>.value(value: widget.firebaseBootstrap),
+        Provider<AuthService>.value(value: _authService),
+        ChangeNotifierProvider<AuthController>.value(value: _auth),
         Provider<TtsService>(
           create: (_) => MockTtsService(),
           dispose: (_, tts) => tts.dispose(),
@@ -116,7 +133,7 @@ class _KidsTelAppState extends State<KidsTelApp> {
               localizationsDelegates: AppLocalizations.localizationsDelegates,
 
               // Router
-              routerConfig: router,
+              routerConfig: _router,
 
               // Global font scaling
               builder: (context, child) {

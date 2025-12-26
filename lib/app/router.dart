@@ -2,6 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../auth/state/auth_controller.dart';
+import '../auth/state/auth_state.dart';
+import '../auth/presentation/auth_gate.dart';
+import '../auth/presentation/login_page.dart';
+import '../auth/presentation/register_page.dart';
+import '../auth/presentation/forgot_password_page.dart';
+import '../auth/presentation/reset_password_sent_page.dart';
+import '../auth/presentation/account_page.dart';
+import '../auth/presentation/change_password_page.dart';
+import '../auth/presentation/provider_link_page.dart';
 import '../features/home/home_page.dart';
 import '../features/story_setup/story_setup_page.dart';
 import '../features/settings/settings_page.dart';
@@ -11,10 +21,85 @@ import '../shared/models/story_setup.dart';
 import '../features/story_reader/story_reader_args.dart';
 import '../features/story_reader/story_reader_page.dart';
 
-GoRouter buildRouter() {
+GoRouter buildRouter({required AuthController auth}) {
+  String? redirect(BuildContext context, GoRouterState state) {
+    final loc = state.uri.path;
+
+    const authRoutes = <String>{
+      '/auth',
+      '/login',
+      '/register',
+      '/forgot-password',
+      '/reset-sent',
+    };
+
+    final isAuthRoute = authRoutes.contains(loc);
+    final status = auth.state.status;
+
+    if (status == AuthStatus.unknown || status == AuthStatus.loading) {
+      return loc == '/auth' ? null : '/auth';
+    }
+
+    if (status == AuthStatus.unauthenticated) {
+      if (auth.devBypass) {
+        // DEV: auto anonymous sign-in happens in controller.
+        return loc == '/auth' ? null : '/auth';
+      }
+      // PROD: allow only auth flow routes.
+      return isAuthRoute ? null : '/login';
+    }
+
+    if (status == AuthStatus.authenticated) {
+      // Keep authenticated users out of auth flow.
+      return isAuthRoute || loc == '/auth' ? '/' : null;
+    }
+
+    return null;
+  }
+
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/auth',
+    refreshListenable: auth,
+    redirect: redirect,
     routes: [
+      GoRoute(
+        path: '/auth',
+        pageBuilder: (context, state) => const MaterialPage(child: AuthGate()),
+      ),
+      GoRoute(
+        path: '/login',
+        pageBuilder: (context, state) => const MaterialPage(child: LoginPage()),
+      ),
+      GoRoute(
+        path: '/register',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: RegisterPage()),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: ForgotPasswordPage()),
+      ),
+      GoRoute(
+        path: '/reset-sent',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: ResetPasswordSentPage()),
+      ),
+      GoRoute(
+        path: '/account',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: AccountPage()),
+      ),
+      GoRoute(
+        path: '/change-password',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: ChangePasswordPage()),
+      ),
+      GoRoute(
+        path: '/provider-link',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: ProviderLinkPage()),
+      ),
       GoRoute(
         path: '/',
         pageBuilder: (context, state) => const MaterialPage(child: HomePage()),
