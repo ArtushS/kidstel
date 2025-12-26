@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../shared/extensions/theme_mode_extension.dart';
@@ -8,6 +10,7 @@ import '../../shared/settings/widgets/choice_tile.dart';
 import '../../shared/settings/widgets/settings_section.dart';
 import '../../shared/settings/widgets/settings_tile.dart';
 import '../../shared/settings/widgets/switch_tile.dart';
+import '../../shared/voice/voice_input_controller.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -246,6 +249,14 @@ class SettingsPage extends StatelessWidget {
                 title: titleLanguage,
                 valueLabel: langLabel,
                 onTap: () async {
+                  // Capture dependencies before any async gaps.
+                  VoiceInputController? voice;
+                  try {
+                    voice = context.read<VoiceInputController>();
+                  } catch (_) {
+                    voice = null;
+                  }
+
                   final picked = await _pickLanguage(
                     context: context,
                     title: titleLanguage,
@@ -253,7 +264,21 @@ class SettingsPage extends StatelessWidget {
                   );
                   if (picked != null) {
                     await controller.setDefaultLanguageCode(picked);
+
+                    // Keep STT language in sync with UI language.
+                    // If VoiceInputController isn't in scope, ignore safely.
+                    await voice?.setDesiredAppLang(picked);
                   }
+                },
+              ),
+              SettingsTile(
+                leading: const Icon(Icons.mic_none_rounded),
+                title: t?.voiceHelpTitle ?? 'Voice input help',
+                subtitle:
+                    t?.voiceHelpSubtitle ?? 'Armenian voice input & languages',
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  context.push('/voice-help');
                 },
               ),
               SettingsTile(

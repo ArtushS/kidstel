@@ -5,6 +5,7 @@ import '../l10n/app_localizations.dart';
 import '../features/home/home_page.dart';
 import '../features/story_setup/story_setup_page.dart';
 import '../features/settings/settings_page.dart';
+import '../features/settings/voice_help_page.dart';
 import '../shared/models/story_setup.dart';
 import '../features/story_reader/story_reader_args.dart';
 import '../features/story_reader/story_reader_page.dart';
@@ -31,6 +32,11 @@ GoRouter buildRouter() {
         path: '/settings',
         pageBuilder: (context, state) =>
             const MaterialPage(child: SettingsPage()),
+      ),
+      GoRoute(
+        path: '/voice-help',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: VoiceHelpPage()),
       ),
       GoRoute(
         path: '/story-reader',

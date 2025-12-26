@@ -9,6 +9,9 @@ class StorySetup {
   final String location;
   final String style;
 
+  /// User idea (typed or dictated)
+  final String? idea;
+
   const StorySetup({
     required this.service,
     required this.ageGroup,
@@ -19,5 +22,6 @@ class StorySetup {
     required this.hero,
     required this.location,
     required this.style,
+    this.idea,
   });
 }

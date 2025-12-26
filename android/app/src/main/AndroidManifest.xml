@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Required for speech-to-text voice input -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <application
         android:label="kidsdom"
         android:name="${applicationName}"

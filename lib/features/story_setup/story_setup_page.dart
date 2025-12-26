@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -6,8 +7,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/ui/ui_constants.dart';
+import '../../shared/voice/voice_input_controller.dart';
+import '../../shared/voice/open_system_settings.dart';
 
 import '../../shared/settings/settings_scope.dart';
+import '../../shared/models/story_setup.dart';
 import '../story/services/story_service.dart';
 import '../story/services/models/generate_story_response.dart';
 
@@ -21,6 +25,11 @@ class StorySetupPage extends StatefulWidget {
 class _StorySetupPageState extends State<StorySetupPage> {
   final _ideaCtrl = TextEditingController();
   final _ideaFocus = FocusNode();
+
+  // Keep page stable while typing/dictating: avoid full-page rebuilds.
+  final ValueNotifier<bool> _listeningVN = ValueNotifier(false);
+  final ValueNotifier<bool> _ideaModeVN = ValueNotifier(false);
+  final ValueNotifier<String> _activeLocaleVN = ValueNotifier('');
 
   bool _isGenerating = false;
 
@@ -48,8 +57,11 @@ class _StorySetupPageState extends State<StorySetupPage> {
     }
   }
 
-  bool _isIdeaMode = false;
-  bool _isListening = false;
+  VoiceInputController? _voice;
+  String? _lastAppLangCode;
+  String? _lastShownVoiceWarning;
+  bool _prevListening = false;
+  bool _skipNextAutoCommit = false;
 
   List<_PickItem> _getHeroes(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -138,48 +150,130 @@ class _StorySetupPageState extends State<StorySetupPage> {
       _warmUpIcons();
     });
 
-    // Idea mode depends ONLY on (listening OR hasText)
-    void recompute() {
+    // Idea mode depends ONLY on (listening OR hasText) without setState.
+    void recomputeIdeaMode() {
       final hasText = _ideaCtrl.text.trim().isNotEmpty;
-      if (!mounted) return;
-      setState(() => _isIdeaMode = _isListening || hasText);
+      _ideaModeVN.value = _listeningVN.value || hasText;
     }
 
-    _ideaFocus.addListener(recompute);
-    _ideaCtrl.addListener(recompute);
+    _ideaCtrl.addListener(recomputeIdeaMode);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final appLang = SettingsScope.of(context).settings.defaultLanguageCode;
+    final next = context.read<VoiceInputController>();
+    if (!identical(_voice, next)) {
+      _voice?.removeListener(_onVoiceChanged);
+      _voice = next;
+      _voice!.addListener(_onVoiceChanged);
+      // Sync immediately.
+      _onVoiceChanged();
+    }
+
+    // Keep STT language in sync with app UI language.
+    // If user switches UI language while listening, controller will cancel.
+    // Next mic start will use the resolved locale for the new language.
+    if (_lastAppLangCode == null || _lastAppLangCode != appLang) {
+      if (kDebugMode) {
+        debugPrint('STT: app language changed $_lastAppLangCode -> $appLang');
+      }
+      _voice?.setDesiredAppLang(appLang);
+    }
+
+    _lastAppLangCode = appLang;
   }
 
   @override
   void dispose() {
+    _voice?.removeListener(_onVoiceChanged);
+    _voice?.cancel();
     _ideaCtrl.dispose();
     _ideaFocus.dispose();
+    _listeningVN.dispose();
+    _ideaModeVN.dispose();
+    _activeLocaleVN.dispose();
     super.dispose();
   }
 
-  Future<void> _toggleVoiceInput() async {
-    // MVP placeholder
-    setState(() {
-      _isListening = !_isListening;
-      _isIdeaMode = _isListening || _ideaCtrl.text.trim().isNotEmpty;
-    });
+  void _onVoiceChanged() {
+    if (!mounted) return;
+    final voice = _voice;
+    if (voice == null) return;
 
-    if (_isListening) {
-      await Future<void>.delayed(const Duration(milliseconds: 600));
-      if (!mounted) return;
+    // Only react to listening transitions (avoid per-partial updates).
+    final nowListening = voice.isListening;
+    if (_prevListening != nowListening) {
+      _listeningVN.value = nowListening;
 
-      if (_ideaCtrl.text.trim().isEmpty) {
-        _ideaCtrl.text =
-            'A story about a little dragon who wants to be friends...';
-        _ideaCtrl.selection = TextSelection.fromPosition(
-          TextPosition(offset: _ideaCtrl.text.length),
-        );
+      // Auto-stop commit: when listening ends, insert best available text into the field.
+      if (_prevListening && !nowListening) {
+        if (_skipNextAutoCommit) {
+          _skipNextAutoCommit = false;
+        } else {
+          // Allow a tiny grace period for late final results.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (_voice?.isListening == false) {
+              _commitFinalTextIntoIdeaField();
+            }
+          });
+        }
       }
 
-      setState(() {
-        _isListening = false;
-        _isIdeaMode = _ideaCtrl.text.trim().isNotEmpty;
-      });
+      _prevListening = nowListening;
+
+      // Keep idea mode updated without rebuilding the full page.
+      final hasText = _ideaCtrl.text.trim().isNotEmpty;
+      _ideaModeVN.value = nowListening || hasText;
     }
+
+    final nextLocale = voice.activeLocaleId;
+    if (_activeLocaleVN.value != nextLocale) {
+      _activeLocaleVN.value = nextLocale;
+    }
+  }
+
+  void _insertIntoIdeaAtCursor(String insert) {
+    if (insert.isEmpty) return;
+
+    final text = _ideaCtrl.text;
+    final sel = _ideaCtrl.selection;
+    final start = sel.isValid ? sel.start : text.length;
+    final end = sel.isValid ? sel.end : text.length;
+
+    final before = text.substring(0, start);
+    final after = text.substring(end);
+    final newText = before + insert + after;
+
+    _ideaCtrl.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: (before + insert).length),
+    );
+
+    FocusScope.of(context).requestFocus(_ideaFocus);
+  }
+
+  void _commitFinalTextIntoIdeaField() {
+    final voice = _voice;
+    if (voice == null) return;
+
+    final recognized = voice.consumeBestResult().trim();
+    if (kDebugMode) {
+      debugPrint('STT commit="$recognized"');
+    }
+    if (recognized.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Speech recognition produced no results'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    _insertIntoIdeaAtCursor(recognized);
   }
 
   void _toggleDarkMode() {
@@ -189,6 +283,40 @@ class _StorySetupPageState extends State<StorySetupPage> {
     final current = settings.settings.themeMode;
     final next = (current == ThemeMode.dark) ? ThemeMode.light : ThemeMode.dark;
     settings.setThemeMode(next);
+  }
+
+  Future<void> _showArmenianVoiceHelpDialog() async {
+    final t = AppLocalizations.of(context)!;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(t.voiceNotAvailable),
+          content: Text(
+            '${t.voiceNotAvailableHyMessage}\n\n${t.voiceHelpSteps}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final ok = await openAppSettings();
+                if (!ctx.mounted) return;
+                if (!ok) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text(t.openSettingsManually)),
+                  );
+                }
+              },
+              child: Text(t.openSettings),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(t.ok),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _openMenu() {
@@ -297,7 +425,16 @@ class _StorySetupPageState extends State<StorySetupPage> {
 
     debugPrint('Generate pressed: entering _onGenerate()');
 
-    final idea = _ideaCtrl.text.trim();
+    // IMPORTANT: send only the editable TextField content (never preview/buffer).
+    final ideaText = _ideaCtrl.text.trim();
+
+    debugPrint('VOICE/IDEA -> "$ideaText"');
+
+    if (kDebugMode) {
+      final trimmed = ideaText.trim();
+      final head = trimmed.characters.take(18).toString();
+      debugPrint('IDEA DEBUG: len=${trimmed.length} head="$head"');
+    }
 
     final heroes = _getHeroes(context);
     final locations = _getLocations(context);
@@ -313,21 +450,37 @@ class _StorySetupPageState extends State<StorySetupPage> {
 
     final settings = SettingsScope.of(context).settings;
 
+    // Data-only setup object (for passing around / persistence later).
+    // IMPORTANT: no service instances are passed through navigation.
+    final setup = StorySetup(
+      service: 'cloud-run',
+      ageGroup: _mapAgeGroup(settings.ageGroup),
+      storyLang: settings.defaultLanguageCode,
+      storyLength: _mapStoryLength(settings.storyLength),
+      creativityLevel: _mapCreativity(settings.creativityLevel),
+      imageEnabled: settings.autoIllustrations,
+      hero: hero.title,
+      location: loc.title,
+      style: type.title,
+      idea: ideaText.isNotEmpty ? ideaText : null,
+    );
+
     final body = <String, dynamic>{
       'action': 'generate',
-      'ageGroup': _mapAgeGroup(settings.ageGroup),
-      'storyLang': settings.defaultLanguageCode,
-      'storyLength': _mapStoryLength(settings.storyLength),
-      'creativityLevel': _mapCreativity(settings.creativityLevel),
-      'image': {'enabled': settings.autoIllustrations},
+      'ageGroup': setup.ageGroup,
+      'storyLang': setup.storyLang,
+      'storyLength': setup.storyLength,
+      'creativityLevel': setup.creativityLevel,
+      'image': {'enabled': setup.imageEnabled},
       'selection': {
-        'hero': hero.title,
-        'location': loc.title,
-        'style': type.title,
+        'hero': setup.hero,
+        'location': setup.location,
+        'style': setup.style,
       },
     };
 
-    if (idea.isNotEmpty) {
+    final idea = setup.idea?.trim();
+    if (idea != null && idea.isNotEmpty) {
       body['idea'] = idea;
     }
 
@@ -346,14 +499,17 @@ class _StorySetupPageState extends State<StorySetupPage> {
         '/story-reader',
         extra: {
           'response': resp,
-          'ageGroup': _mapAgeGroup(settings.ageGroup),
-          'lang': settings.defaultLanguageCode,
-          'length': _mapStoryLength(settings.storyLength),
-          'creativity': _mapCreativity(settings.creativityLevel),
-          'imageEnabled': settings.autoIllustrations,
-          'hero': hero.title,
-          'location': loc.title,
-          'style': type.title,
+          // Keep existing keys for compatibility with router parsing.
+          'ageGroup': setup.ageGroup,
+          'lang': setup.storyLang,
+          'length': setup.storyLength,
+          'creativity': setup.creativityLevel,
+          'imageEnabled': setup.imageEnabled,
+          'hero': setup.hero,
+          'location': setup.location,
+          'style': setup.style,
+          // Bonus: pass the full data-only setup (including idea) for later use.
+          'setup': setup,
         },
       );
     } catch (e) {
@@ -395,6 +551,10 @@ class _StorySetupPageState extends State<StorySetupPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final t = AppLocalizations.of(context)!;
 
+    // Avoid watching VoiceInputController in build: it would rebuild the whole page
+    // on every partial result. We update only small UI parts via ValueNotifiers.
+    final voice = context.read<VoiceInputController>();
+
     final textPrimary = isDark ? Colors.white : Colors.black87;
     final textSecondary = isDark ? Colors.white70 : Colors.black54;
 
@@ -430,77 +590,211 @@ class _StorySetupPageState extends State<StorySetupPage> {
                     _IdeaField(
                       controller: _ideaCtrl,
                       focusNode: _ideaFocus,
-                      isListening: _isListening,
-                      onMicTap: _toggleVoiceInput,
+                      isListeningListenable: _listeningVN,
+                      onMicTap: () async {
+                        final langCode = SettingsScope.of(
+                          context,
+                        ).settings.defaultLanguageCode;
+
+                        if (!voice.isListening) {
+                          // Always start using app UI language (EN/RU/HY).
+                          await voice.startForAppLang(appLangCode: langCode);
+                          if (!context.mounted) return;
+
+                          // If we fell back to system locale for RU/HY, show a short help.
+                          final warn = voice.warning?.trim();
+                          if (warn != null &&
+                              warn.isNotEmpty &&
+                              warn != _lastShownVoiceWarning) {
+                            _lastShownVoiceWarning = warn;
+                            final t = AppLocalizations.of(context)!;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(warn),
+                                duration: const Duration(seconds: 6),
+                                action: SnackBarAction(
+                                  label: t.openSettings,
+                                  onPressed: () {
+                                    openAppSettings();
+                                  },
+                                ),
+                              ),
+                            );
+                            voice.clearWarning();
+                          }
+
+                          if (kDebugMode) {
+                            final active = voice.activeLocaleId.toLowerCase();
+                            if (langCode == 'ru' && !active.startsWith('ru')) {
+                              debugPrint(
+                                'STT debug: appLang=ru but activeLocale=${voice.activeLocaleId}',
+                              );
+                            }
+                            if (langCode == 'hy' && !active.startsWith('hy')) {
+                              debugPrint(
+                                'STT debug: appLang=hy but activeLocale=${voice.activeLocaleId}',
+                              );
+                            }
+                          }
+
+                          final err = voice.error;
+                          if (err != null && err.trim().isNotEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(err),
+                                duration: const Duration(seconds: 4),
+                              ),
+                            );
+                          }
+                          return;
+                        }
+
+                        // Manual stop: stop listening and insert recognized text at cursor.
+                        _skipNextAutoCommit = true;
+                        await voice.stop();
+                        _commitFinalTextIntoIdeaField();
+                      },
                       isDark: isDark,
                       hintText: t.typeYourIdea,
                     ),
-                    const SizedBox(height: 16),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: _isIdeaMode
-                          ? Padding(
-                              key: const ValueKey('idea-msg'),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Text(
-                                t.storyGeneratedFromIdea,
-                                style: TextStyle(
-                                  color: textSecondary,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            )
-                          : _SelectedChips(
-                              key: const ValueKey('chips'),
-                              hero: hero,
-                              loc: loc,
-                              type: type,
-                              isDark: isDark,
-                            ),
-                    ),
-                    const SizedBox(height: 18),
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 180),
-                      opacity: _isIdeaMode ? 0.35 : 1,
-                      child: IgnorePointer(
-                        ignoring: _isIdeaMode,
-                        child: Column(
-                          children: [
-                            _CarouselSection(
-                              title: t.hero,
-                              subtitle: t.swipeToChoose,
-                              height: 240,
-                              items: heroes,
-                              initialPage: _heroIndex,
-                              onPageChanged: (i) =>
-                                  setState(() => _heroIndex = i),
-                              isDark: isDark,
-                            ),
-                            const SizedBox(height: 16),
-                            _CarouselSection(
-                              title: t.location,
-                              subtitle: t.swipeToChoose,
-                              height: 240,
-                              items: locations,
-                              initialPage: _locIndex,
-                              onPageChanged: (i) =>
-                                  setState(() => _locIndex = i),
-                              isDark: isDark,
-                            ),
-                            const SizedBox(height: 16),
-                            _CarouselSection(
-                              title: t.storyType,
-                              subtitle: t.swipeToChoose,
-                              height: 240,
-                              items: types,
-                              initialPage: _typeIndex,
-                              onPageChanged: (i) =>
-                                  setState(() => _typeIndex = i),
-                              isDark: isDark,
-                            ),
-                          ],
+
+                    // Debug-only indicator near mic (requested): show current STT locale.
+                    if (kDebugMode)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: ValueListenableBuilder<String>(
+                            valueListenable: _activeLocaleVN,
+                            builder: (context, locale, _) {
+                              final v = locale.trim().isEmpty ? '-' : locale;
+                              return Text(
+                                'STT: $v',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: textSecondary),
+                              );
+                            },
+                          ),
                         ),
                       ),
+
+                    // Inline help link near the mic (Armenian UI only).
+                    if (SettingsScope.of(
+                          context,
+                        ).settings.defaultLanguageCode ==
+                        'hy')
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _showArmenianVoiceHelpDialog,
+                          child: Text(
+                            t.voiceHelpWhatIsThis,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    if (kDebugMode && _voice != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: AnimatedBuilder(
+                          animation: _voice!,
+                          builder: (context, _) {
+                            final v = _voice!;
+                            return _SttDebugPanel(
+                              appLangCode: SettingsScope.of(
+                                context,
+                              ).settings.defaultLanguageCode,
+                              chosenLocaleId:
+                                  v.lastResolvedLocaleId ?? v.currentLocaleId,
+                              hasArmenianSupport: v.hasArmenianSupport,
+                              localeIds: v.localeIds,
+                              error: v.error,
+                              textColor: textSecondary,
+                            );
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _ideaModeVN,
+                      builder: (context, isIdeaMode, _) {
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: isIdeaMode
+                              ? Padding(
+                                  key: const ValueKey('idea-msg'),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: Text(
+                                    t.storyGeneratedFromIdea,
+                                    style: TextStyle(
+                                      color: textSecondary,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                )
+                              : _SelectedChips(
+                                  key: const ValueKey('chips'),
+                                  hero: hero,
+                                  loc: loc,
+                                  type: type,
+                                  isDark: isDark,
+                                ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _ideaModeVN,
+                      child: Column(
+                        children: [
+                          _CarouselSection(
+                            title: t.hero,
+                            subtitle: t.swipeToChoose,
+                            height: 240,
+                            items: heroes,
+                            initialPage: _heroIndex,
+                            onPageChanged: (i) =>
+                                setState(() => _heroIndex = i),
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 16),
+                          _CarouselSection(
+                            title: t.location,
+                            subtitle: t.swipeToChoose,
+                            height: 240,
+                            items: locations,
+                            initialPage: _locIndex,
+                            onPageChanged: (i) => setState(() => _locIndex = i),
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 16),
+                          _CarouselSection(
+                            title: t.storyType,
+                            subtitle: t.swipeToChoose,
+                            height: 240,
+                            items: types,
+                            initialPage: _typeIndex,
+                            onPageChanged: (i) =>
+                                setState(() => _typeIndex = i),
+                            isDark: isDark,
+                          ),
+                        ],
+                      ),
+                      builder: (context, isIdeaMode, child) {
+                        return AnimatedOpacity(
+                          duration: const Duration(milliseconds: 180),
+                          opacity: isIdeaMode ? 0.35 : 1,
+                          child: IgnorePointer(
+                            ignoring: isIdeaMode,
+                            child: child,
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 90),
                   ],
@@ -600,7 +894,7 @@ class _SectionTitle extends StatelessWidget {
 class _IdeaField extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
-  final bool isListening;
+  final ValueListenable<bool> isListeningListenable;
   final VoidCallback onMicTap;
   final bool isDark;
   final String hintText;
@@ -608,7 +902,7 @@ class _IdeaField extends StatelessWidget {
   const _IdeaField({
     required this.controller,
     required this.focusNode,
-    required this.isListening,
+    required this.isListeningListenable,
     required this.onMicTap,
     required this.isDark,
     required this.hintText,
@@ -660,12 +954,71 @@ class _IdeaField extends StatelessWidget {
           IconButton(
             tooltip: AppLocalizations.of(context)!.voiceInput,
             onPressed: onMicTap,
-            icon: Icon(
-              isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+            icon: ValueListenableBuilder<bool>(
+              valueListenable: isListeningListenable,
+              builder: (context, listening, _) {
+                return Icon(
+                  listening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                );
+              },
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SttDebugPanel extends StatelessWidget {
+  final String appLangCode;
+  final String chosenLocaleId;
+  final bool hasArmenianSupport;
+  final List<String> localeIds;
+  final String? error;
+  final Color textColor;
+
+  const _SttDebugPanel({
+    required this.appLangCode,
+    required this.chosenLocaleId,
+    required this.hasArmenianSupport,
+    required this.localeIds,
+    required this.error,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final style =
+        Theme.of(context).textTheme.bodySmall?.copyWith(color: textColor) ??
+        TextStyle(color: textColor, fontSize: 12);
+
+    final localesPreview = localeIds.take(10).join(', ');
+    final err = error?.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'STT debug: appLang=$appLangCode  locale=$chosenLocaleId  hySupport=$hasArmenianSupport',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: style,
+        ),
+        if (localesPreview.isNotEmpty)
+          Text(
+            'Locales: $localesPreview',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+        if (err != null && err.isNotEmpty)
+          Text(
+            'Error: $err',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+      ],
     );
   }
 }

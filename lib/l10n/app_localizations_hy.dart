@@ -266,6 +266,55 @@ class AppLocalizationsHy extends AppLocalizations {
   String get voiceInput => 'Ձայնային ներածում';
 
   @override
+  String get voiceHelpTitle => 'Ձայնային ներածման օգնություն';
+
+  @override
+  String get voiceHelpSubtitle => 'Հայերեն ձայնային ներածում և լեզուներ';
+
+  @override
+  String get voiceHelpArmenianTitle => 'Հայերեն ձայնային ներածում';
+
+  @override
+  String get voiceHelpStatusLabel => 'Աջակցվում է սարքում';
+
+  @override
+  String get voiceHelpSupportedYes => 'Այո';
+
+  @override
+  String get voiceHelpSupportedNo => 'Ոչ';
+
+  @override
+  String get voiceHelpSupportedHint =>
+      'Թվում է՝ հայերեն ձայնային ներածումը աջակցվում է։ Սեղմիր միկրոֆոնը և փորձիր կարճ արտահայտություն։';
+
+  @override
+  String get voiceHelpSteps =>
+      'Ձայնային ներածումը կախված է հեռախոսի խոսքի ծառայություններից և լեզվի կարգավորումներից։ Հավելվածը չի կարող դա միացնել ավտոմատ։\n\nՓորձիր՝ Կարգավորումներ → Լեզու և ներածում → Ձայնային ներածում (կամ Google ձայնային ներածում) → Լեզուներ → միացրու Հայերեն։';
+
+  @override
+  String get voiceNotAvailable => 'Ձայնային ներածումը հասանելի չէ';
+
+  @override
+  String get voiceNotAvailableHyMessage =>
+      'Հայերեն խոսքի ճանաչումը չի աջակցվում այս սարքում։ Դու կարող ես հայերեն մուտքագրել ստեղնաշարով, և տեքստը կուղարկվի AI-ին։';
+
+  @override
+  String get voiceHelpWhatIsThis => 'Ի՞նչ է սա';
+
+  @override
+  String get openSettings => 'Բացել կարգավորումները';
+
+  @override
+  String get openSettingsManually =>
+      'Բացիր կարգավորումները ձեռքով․ Կարգավորումներ → Լեզու և ներածում → Ձայնային ներածում';
+
+  @override
+  String get tryAgain => 'Փորձել նորից';
+
+  @override
+  String get close => 'Փակել';
+
+  @override
   String get generateRequestMVP => 'Ստեղծման հարցում (MVP)';
 
   @override

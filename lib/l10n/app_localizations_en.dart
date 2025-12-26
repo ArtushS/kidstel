@@ -265,6 +265,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceInput => 'Voice input';
 
   @override
+  String get voiceHelpTitle => 'Voice input help';
+
+  @override
+  String get voiceHelpSubtitle => 'Armenian voice input & languages';
+
+  @override
+  String get voiceHelpArmenianTitle => 'Armenian voice input';
+
+  @override
+  String get voiceHelpStatusLabel => 'Supported on this device';
+
+  @override
+  String get voiceHelpSupportedYes => 'Yes';
+
+  @override
+  String get voiceHelpSupportedNo => 'No';
+
+  @override
+  String get voiceHelpSupportedHint =>
+      'Armenian voice input appears to be supported. Tap the mic and try a short phrase.';
+
+  @override
+  String get voiceHelpSteps =>
+      'Voice input depends on your phone\'s speech services and language settings. The app can\'t enable it automatically.\n\nTry: Settings → Language & input → Voice input (or Google voice typing) → Languages → enable Armenian.';
+
+  @override
+  String get voiceNotAvailable => 'Voice input not available';
+
+  @override
+  String get voiceNotAvailableHyMessage =>
+      'Armenian speech recognition is not supported on this device. You can still type Armenian with the keyboard and it will be sent to AI.';
+
+  @override
+  String get voiceHelpWhatIsThis => 'What is this?';
+
+  @override
+  String get openSettings => 'Open settings';
+
+  @override
+  String get openSettingsManually =>
+      'Open settings manually: Settings → Language & input → Voice input';
+
+  @override
+  String get tryAgain => 'Try again';
+
+  @override
+  String get close => 'Close';
+
+  @override
   String get generateRequestMVP => 'Generate request (MVP)';
 
   @override

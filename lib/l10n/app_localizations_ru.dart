@@ -265,6 +265,55 @@ class AppLocalizationsRu extends AppLocalizations {
   String get voiceInput => 'Голосовой ввод';
 
   @override
+  String get voiceHelpTitle => 'Помощь по голосовому вводу';
+
+  @override
+  String get voiceHelpSubtitle => 'Армянский голосовой ввод и языки';
+
+  @override
+  String get voiceHelpArmenianTitle => 'Армянский голосовой ввод';
+
+  @override
+  String get voiceHelpStatusLabel => 'Поддерживается на устройстве';
+
+  @override
+  String get voiceHelpSupportedYes => 'Да';
+
+  @override
+  String get voiceHelpSupportedNo => 'Нет';
+
+  @override
+  String get voiceHelpSupportedHint =>
+      'Похоже, армянский голосовой ввод поддерживается. Нажмите на микрофон и продиктуйте короткую фразу.';
+
+  @override
+  String get voiceHelpSteps =>
+      'Голосовой ввод зависит от служб распознавания речи и языковых настроек телефона. Приложение не может включить это автоматически.\n\nПопробуйте: Настройки → Язык и ввод → Голосовой ввод (или Google голосовой ввод) → Языки → включите Армянский.';
+
+  @override
+  String get voiceNotAvailable => 'Голосовой ввод недоступен';
+
+  @override
+  String get voiceNotAvailableHyMessage =>
+      'Распознавание речи на армянском не поддерживается на этом устройстве. Вы всё равно можете печатать армянский с клавиатуры — текст будет отправлен в AI.';
+
+  @override
+  String get voiceHelpWhatIsThis => 'Что это?';
+
+  @override
+  String get openSettings => 'Открыть настройки';
+
+  @override
+  String get openSettingsManually =>
+      'Откройте настройки вручную: Настройки → Язык и ввод → Голосовой ввод';
+
+  @override
+  String get tryAgain => 'Проверить снова';
+
+  @override
+  String get close => 'Закрыть';
+
+  @override
   String get generateRequestMVP => 'Запрос генерации (MVP)';
 
   @override

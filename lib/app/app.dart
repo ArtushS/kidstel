@@ -9,6 +9,8 @@ import '../shared/settings/in_memory_settings_repository.dart';
 import '../shared/settings/settings_controller.dart';
 import '../shared/settings/settings_scope.dart';
 
+import '../shared/voice/voice_input_controller.dart';
+
 import '../features/story/services/story_service.dart';
 import 'config.dart';
 
@@ -66,6 +68,9 @@ class _KidsTelAppState extends State<KidsTelApp> {
       providers: [
         Provider<StoryService>(
           create: (_) => StoryService(endpointUrl: storyAgentUrl),
+        ),
+        ChangeNotifierProvider<VoiceInputController>(
+          create: (_) => VoiceInputController()..init(),
         ),
         // другие провайдеры...
       ],

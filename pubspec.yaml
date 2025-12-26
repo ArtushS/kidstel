@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   http: ^1.2.2
 
+  speech_to_text: ^7.3.0
+
   flutter_localizations:
     sdk: flutter
   intl: ^0.20.0
@@ -24,6 +26,8 @@ dependencies:
 
   cached_network_image: ^3.4.1
   provider: ^6.1.5+1
+
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

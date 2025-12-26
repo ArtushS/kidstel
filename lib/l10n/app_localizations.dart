@@ -610,6 +610,96 @@ abstract class AppLocalizations {
   /// **'Voice input'**
   String get voiceInput;
 
+  /// No description provided for @voiceHelpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input help'**
+  String get voiceHelpTitle;
+
+  /// No description provided for @voiceHelpSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Armenian voice input & languages'**
+  String get voiceHelpSubtitle;
+
+  /// No description provided for @voiceHelpArmenianTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Armenian voice input'**
+  String get voiceHelpArmenianTitle;
+
+  /// No description provided for @voiceHelpStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Supported on this device'**
+  String get voiceHelpStatusLabel;
+
+  /// No description provided for @voiceHelpSupportedYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get voiceHelpSupportedYes;
+
+  /// No description provided for @voiceHelpSupportedNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get voiceHelpSupportedNo;
+
+  /// No description provided for @voiceHelpSupportedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Armenian voice input appears to be supported. Tap the mic and try a short phrase.'**
+  String get voiceHelpSupportedHint;
+
+  /// No description provided for @voiceHelpSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input depends on your phone\'s speech services and language settings. The app can\'t enable it automatically.\n\nTry: Settings → Language & input → Voice input (or Google voice typing) → Languages → enable Armenian.'**
+  String get voiceHelpSteps;
+
+  /// No description provided for @voiceNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input not available'**
+  String get voiceNotAvailable;
+
+  /// No description provided for @voiceNotAvailableHyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Armenian speech recognition is not supported on this device. You can still type Armenian with the keyboard and it will be sent to AI.'**
+  String get voiceNotAvailableHyMessage;
+
+  /// No description provided for @voiceHelpWhatIsThis.
+  ///
+  /// In en, this message translates to:
+  /// **'What is this?'**
+  String get voiceHelpWhatIsThis;
+
+  /// No description provided for @openSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get openSettings;
+
+  /// No description provided for @openSettingsManually.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings manually: Settings → Language & input → Voice input'**
+  String get openSettingsManually;
+
+  /// No description provided for @tryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get tryAgain;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
   /// No description provided for @generateRequestMVP.
   ///
   /// In en, this message translates to:
