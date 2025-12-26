@@ -332,8 +332,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
               title: Text(AppLocalizations.of(context)!.account),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: account page later
-                // context.push('/account');
+                context.push('/account');
               },
             ),
             ListTile(
@@ -566,247 +565,257 @@ class _StorySetupPageState extends State<StorySetupPage> {
     final loc = locations[_locIndex];
     final type = types[_typeIndex];
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _TopBar(
-              title: t.createNewStory,
-              onBack: _handleBack,
-              onMenu: _openMenu,
-              onToggleDark: _toggleDarkMode,
-              isDark: isDark,
-              titleColor: textPrimary,
-              iconColor: textPrimary,
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SectionTitle(t.describeYourIdea, color: textPrimary),
-                    const SizedBox(height: 10),
-                    _IdeaField(
-                      controller: _ideaCtrl,
-                      focusNode: _ideaFocus,
-                      isListeningListenable: _listeningVN,
-                      onMicTap: () async {
-                        final langCode = SettingsScope.of(
-                          context,
-                        ).settings.defaultLanguageCode;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              _TopBar(
+                title: t.createNewStory,
+                onBack: _handleBack,
+                onMenu: _openMenu,
+                onToggleDark: _toggleDarkMode,
+                isDark: isDark,
+                titleColor: textPrimary,
+                iconColor: textPrimary,
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SectionTitle(t.describeYourIdea, color: textPrimary),
+                      const SizedBox(height: 10),
+                      _IdeaField(
+                        controller: _ideaCtrl,
+                        focusNode: _ideaFocus,
+                        isListeningListenable: _listeningVN,
+                        onMicTap: () async {
+                          final langCode = SettingsScope.of(
+                            context,
+                          ).settings.defaultLanguageCode;
 
-                        if (!voice.isListening) {
-                          // Always start using app UI language (EN/RU/HY).
-                          await voice.startForAppLang(appLangCode: langCode);
-                          if (!context.mounted) return;
+                          if (!voice.isListening) {
+                            // Always start using app UI language (EN/RU/HY).
+                            await voice.startForAppLang(appLangCode: langCode);
+                            if (!context.mounted) return;
 
-                          // If we fell back to system locale for RU/HY, show a short help.
-                          final warn = voice.warning?.trim();
-                          if (warn != null &&
-                              warn.isNotEmpty &&
-                              warn != _lastShownVoiceWarning) {
-                            _lastShownVoiceWarning = warn;
-                            final t = AppLocalizations.of(context)!;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(warn),
-                                duration: const Duration(seconds: 6),
-                                action: SnackBarAction(
-                                  label: t.openSettings,
-                                  onPressed: () {
-                                    openAppSettings();
-                                  },
+                            // If we fell back to system locale for RU/HY, show a short help.
+                            final warn = voice.warning?.trim();
+                            if (warn != null &&
+                                warn.isNotEmpty &&
+                                warn != _lastShownVoiceWarning) {
+                              _lastShownVoiceWarning = warn;
+                              final t = AppLocalizations.of(context)!;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(warn),
+                                  duration: const Duration(seconds: 6),
+                                  action: SnackBarAction(
+                                    label: t.openSettings,
+                                    onPressed: () {
+                                      openAppSettings();
+                                    },
+                                  ),
                                 ),
-                              ),
-                            );
-                            voice.clearWarning();
-                          }
+                              );
+                              voice.clearWarning();
+                            }
 
-                          if (kDebugMode) {
-                            final active = voice.activeLocaleId.toLowerCase();
-                            if (langCode == 'ru' && !active.startsWith('ru')) {
-                              debugPrint(
-                                'STT debug: appLang=ru but activeLocale=${voice.activeLocaleId}',
+                            if (kDebugMode) {
+                              final active = voice.activeLocaleId.toLowerCase();
+                              if (langCode == 'ru' &&
+                                  !active.startsWith('ru')) {
+                                debugPrint(
+                                  'STT debug: appLang=ru but activeLocale=${voice.activeLocaleId}',
+                                );
+                              }
+                              if (langCode == 'hy' &&
+                                  !active.startsWith('hy')) {
+                                debugPrint(
+                                  'STT debug: appLang=hy but activeLocale=${voice.activeLocaleId}',
+                                );
+                              }
+                            }
+
+                            final err = voice.error;
+                            if (err != null && err.trim().isNotEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(err),
+                                  duration: const Duration(seconds: 4),
+                                ),
                               );
                             }
-                            if (langCode == 'hy' && !active.startsWith('hy')) {
-                              debugPrint(
-                                'STT debug: appLang=hy but activeLocale=${voice.activeLocaleId}',
-                              );
-                            }
+                            return;
                           }
 
-                          final err = voice.error;
-                          if (err != null && err.trim().isNotEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(err),
-                                duration: const Duration(seconds: 4),
-                              ),
-                            );
-                          }
-                          return;
-                        }
+                          // Manual stop: stop listening and insert recognized text at cursor.
+                          _skipNextAutoCommit = true;
+                          await voice.stop();
+                          _commitFinalTextIntoIdeaField();
+                        },
+                        isDark: isDark,
+                        hintText: t.typeYourIdea,
+                      ),
 
-                        // Manual stop: stop listening and insert recognized text at cursor.
-                        _skipNextAutoCommit = true;
-                        await voice.stop();
-                        _commitFinalTextIntoIdeaField();
-                      },
-                      isDark: isDark,
-                      hintText: t.typeYourIdea,
-                    ),
+                      // Debug-only indicator near mic (requested): show current STT locale.
+                      if (kDebugMode)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: ValueListenableBuilder<String>(
+                              valueListenable: _activeLocaleVN,
+                              builder: (context, locale, _) {
+                                final v = locale.trim().isEmpty ? '-' : locale;
+                                return Text(
+                                  'STT: $v',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: textSecondary),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
 
-                    // Debug-only indicator near mic (requested): show current STT locale.
-                    if (kDebugMode)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: ValueListenableBuilder<String>(
-                            valueListenable: _activeLocaleVN,
-                            builder: (context, locale, _) {
-                              final v = locale.trim().isEmpty ? '-' : locale;
-                              return Text(
-                                'STT: $v',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: textSecondary),
+                      // Inline help link near the mic (Armenian UI only).
+                      if (SettingsScope.of(
+                            context,
+                          ).settings.defaultLanguageCode ==
+                          'hy')
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _showArmenianVoiceHelpDialog,
+                            child: Text(
+                              t.voiceHelpWhatIsThis,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      if (kDebugMode && _voice != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: AnimatedBuilder(
+                            animation: _voice!,
+                            builder: (context, _) {
+                              final v = _voice!;
+                              return _SttDebugPanel(
+                                appLangCode: SettingsScope.of(
+                                  context,
+                                ).settings.defaultLanguageCode,
+                                chosenLocaleId:
+                                    v.lastResolvedLocaleId ?? v.currentLocaleId,
+                                hasArmenianSupport: v.hasArmenianSupport,
+                                localeIds: v.localeIds,
+                                error: v.error,
+                                textColor: textSecondary,
                               );
                             },
                           ),
                         ),
-                      ),
-
-                    // Inline help link near the mic (Armenian UI only).
-                    if (SettingsScope.of(
-                          context,
-                        ).settings.defaultLanguageCode ==
-                        'hy')
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: _showArmenianVoiceHelpDialog,
-                          child: Text(
-                            t.voiceHelpWhatIsThis,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    if (kDebugMode && _voice != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: AnimatedBuilder(
-                          animation: _voice!,
-                          builder: (context, _) {
-                            final v = _voice!;
-                            return _SttDebugPanel(
-                              appLangCode: SettingsScope.of(
-                                context,
-                              ).settings.defaultLanguageCode,
-                              chosenLocaleId:
-                                  v.lastResolvedLocaleId ?? v.currentLocaleId,
-                              hasArmenianSupport: v.hasArmenianSupport,
-                              localeIds: v.localeIds,
-                              error: v.error,
-                              textColor: textSecondary,
-                            );
-                          },
-                        ),
-                      ),
-                    const SizedBox(height: 16),
-                    ValueListenableBuilder<bool>(
-                      valueListenable: _ideaModeVN,
-                      builder: (context, isIdeaMode, _) {
-                        return AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: isIdeaMode
-                              ? Padding(
-                                  key: const ValueKey('idea-msg'),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                  child: Text(
-                                    t.storyGeneratedFromIdea,
-                                    style: TextStyle(
-                                      color: textSecondary,
-                                      fontStyle: FontStyle.italic,
+                      const SizedBox(height: 16),
+                      ValueListenableBuilder<bool>(
+                        valueListenable: _ideaModeVN,
+                        builder: (context, isIdeaMode, _) {
+                          return AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            child: isIdeaMode
+                                ? Padding(
+                                    key: const ValueKey('idea-msg'),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8,
                                     ),
+                                    child: Text(
+                                      t.storyGeneratedFromIdea,
+                                      style: TextStyle(
+                                        color: textSecondary,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  )
+                                : _SelectedChips(
+                                    key: const ValueKey('chips'),
+                                    hero: hero,
+                                    loc: loc,
+                                    type: type,
+                                    isDark: isDark,
                                   ),
-                                )
-                              : _SelectedChips(
-                                  key: const ValueKey('chips'),
-                                  hero: hero,
-                                  loc: loc,
-                                  type: type,
-                                  isDark: isDark,
-                                ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    ValueListenableBuilder<bool>(
-                      valueListenable: _ideaModeVN,
-                      child: Column(
-                        children: [
-                          _CarouselSection(
-                            title: t.hero,
-                            subtitle: t.swipeToChoose,
-                            height: 240,
-                            items: heroes,
-                            initialPage: _heroIndex,
-                            onPageChanged: (i) =>
-                                setState(() => _heroIndex = i),
-                            isDark: isDark,
-                          ),
-                          const SizedBox(height: 16),
-                          _CarouselSection(
-                            title: t.location,
-                            subtitle: t.swipeToChoose,
-                            height: 240,
-                            items: locations,
-                            initialPage: _locIndex,
-                            onPageChanged: (i) => setState(() => _locIndex = i),
-                            isDark: isDark,
-                          ),
-                          const SizedBox(height: 16),
-                          _CarouselSection(
-                            title: t.storyType,
-                            subtitle: t.swipeToChoose,
-                            height: 240,
-                            items: types,
-                            initialPage: _typeIndex,
-                            onPageChanged: (i) =>
-                                setState(() => _typeIndex = i),
-                            isDark: isDark,
-                          ),
-                        ],
+                          );
+                        },
                       ),
-                      builder: (context, isIdeaMode, child) {
-                        return AnimatedOpacity(
-                          duration: const Duration(milliseconds: 180),
-                          opacity: isIdeaMode ? 0.35 : 1,
-                          child: IgnorePointer(
-                            ignoring: isIdeaMode,
-                            child: child,
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 90),
-                  ],
+                      const SizedBox(height: 18),
+                      ValueListenableBuilder<bool>(
+                        valueListenable: _ideaModeVN,
+                        child: Column(
+                          children: [
+                            _CarouselSection(
+                              title: t.hero,
+                              subtitle: t.swipeToChoose,
+                              height: 240,
+                              items: heroes,
+                              initialPage: _heroIndex,
+                              onPageChanged: (i) =>
+                                  setState(() => _heroIndex = i),
+                              isDark: isDark,
+                            ),
+                            const SizedBox(height: 16),
+                            _CarouselSection(
+                              title: t.location,
+                              subtitle: t.swipeToChoose,
+                              height: 240,
+                              items: locations,
+                              initialPage: _locIndex,
+                              onPageChanged: (i) =>
+                                  setState(() => _locIndex = i),
+                              isDark: isDark,
+                            ),
+                            const SizedBox(height: 16),
+                            _CarouselSection(
+                              title: t.storyType,
+                              subtitle: t.swipeToChoose,
+                              height: 240,
+                              items: types,
+                              initialPage: _typeIndex,
+                              onPageChanged: (i) =>
+                                  setState(() => _typeIndex = i),
+                              isDark: isDark,
+                            ),
+                          ],
+                        ),
+                        builder: (context, isIdeaMode, child) {
+                          return AnimatedOpacity(
+                            duration: const Duration(milliseconds: 180),
+                            opacity: isIdeaMode ? 0.35 : 1,
+                            child: IgnorePointer(
+                              ignoring: isIdeaMode,
+                              child: child,
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 90),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            _BottomBar(
-              enabled: _canGenerate(context) && !_isGenerating,
-              onGenerate: () => _onGenerate(context),
-              label: _isGenerating ? 'Generating...' : t.generate,
-            ),
-          ],
+              _BottomBar(
+                enabled: _canGenerate(context) && !_isGenerating,
+                onGenerate: () => _onGenerate(context),
+                label: _isGenerating ? 'Generating...' : t.generate,
+              ),
+            ],
+          ),
         ),
       ),
     );

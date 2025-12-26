@@ -38,13 +38,13 @@ class HomePage extends StatelessWidget {
               _NeumorphicCircleButton(
                 icon: Icons.add,
                 label: t.createStory,
-                onTap: () => context.go('/setup'),
+                onTap: () => context.push('/setup'),
               ),
               const SizedBox(height: 28),
               _NeumorphicCircleButton(
                 icon: Icons.menu_book_outlined,
                 label: t.myStories,
-                onTap: () => context.go('/reader'),
+                onTap: () => context.push('/reader'),
               ),
             ],
           ),

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -443,7 +445,7 @@ class _ImagePanel extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: Image.network(url ?? '', fit: BoxFit.cover),
+                child: _IllustrationImage(source: url),
               ),
             ),
           ],
@@ -475,6 +477,84 @@ class _ImagePanel extends StatelessWidget {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(padding: const EdgeInsets.all(16), child: content),
+    );
+  }
+}
+
+class _IllustrationImage extends StatelessWidget {
+  final String? source;
+
+  const _IllustrationImage({required this.source});
+
+  bool _isHttpUrl(String s) =>
+      s.startsWith('http://') || s.startsWith('https://');
+  bool _isGsUrl(String s) => s.startsWith('gs://');
+
+  Future<String> _resolve(String s) async {
+    final v = s.trim();
+    if (v.isEmpty) return '';
+    if (_isHttpUrl(v)) return v;
+
+    final storage = FirebaseStorage.instance;
+    if (_isGsUrl(v)) {
+      return storage.refFromURL(v).getDownloadURL();
+    }
+
+    // Treat as a storage path like: users/<uid>/.../file.png
+    return storage.ref(v).getDownloadURL();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = (source ?? '').trim();
+    if (s.isEmpty) {
+      return const ColoredBox(
+        color: Colors.black12,
+        child: Center(child: Icon(Icons.image_not_supported_outlined)),
+      );
+    }
+
+    return FutureBuilder<String>(
+      future: _resolve(s),
+      builder: (context, snap) {
+        final url = (snap.data ?? '').trim();
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (url.isEmpty || snap.hasError) {
+          return ColoredBox(
+            color: Colors.black12,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.broken_image_outlined),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Failed to load image',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        return CachedNetworkImage(
+          imageUrl: url,
+          fit: BoxFit.cover,
+          placeholder: (context, _) =>
+              const Center(child: CircularProgressIndicator()),
+          errorWidget: (context, _, error) => const ColoredBox(
+            color: Colors.black12,
+            child: Center(child: Icon(Icons.broken_image_outlined)),
+          ),
+        );
+      },
     );
   }
 }

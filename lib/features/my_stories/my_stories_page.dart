@@ -16,6 +16,14 @@ class _MyStoriesPageState extends State<MyStoriesPage> {
   late Future<void> _load;
   List<_StoryItem> _items = const [];
 
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -55,62 +63,75 @@ class _MyStoriesPageState extends State<MyStoriesPage> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(t.myStories)),
-      body: FutureBuilder<void>(
-        future: _load,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(t.myStories),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _handleBack,
+          ),
+        ),
+        body: FutureBuilder<void>(
+          future: _load,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          if (_items.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(t.noStoryYet),
+            if (_items.isEmpty) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(t.noStoryYet),
+                ),
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: _reload,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(12),
+                itemCount: _items.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final s = _items[index];
+                  return Card(
+                    child: ListTile(
+                      leading: Icon(
+                        s.isFinished
+                            ? Icons.check_circle_outline
+                            : Icons.play_circle_outline,
+                      ),
+                      title: Text(
+                        s.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        '${s.chapterCount} • ${_formatDate(s.updated)}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        context.push(
+                          '/story-reader',
+                          extra: <String, dynamic>{'storyId': s.id},
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
             );
-          }
-
-          return RefreshIndicator(
-            onRefresh: _reload,
-            child: ListView.separated(
-              padding: const EdgeInsets.all(12),
-              itemCount: _items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final s = _items[index];
-                return Card(
-                  child: ListTile(
-                    leading: Icon(
-                      s.isFinished
-                          ? Icons.check_circle_outline
-                          : Icons.play_circle_outline,
-                    ),
-                    title: Text(
-                      s.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      '${s.chapterCount} • ${_formatDate(s.updated)}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      context.push(
-                        '/story-reader',
-                        extra: <String, dynamic>{'storyId': s.id},
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-          );
-        },
+          },
+        ),
       ),
     );
   }
