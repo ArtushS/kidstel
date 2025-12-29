@@ -5,11 +5,14 @@ import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/extensions/theme_mode_extension.dart';
 import '../../shared/settings/app_settings.dart';
+import '../../shared/settings/settings_controller.dart';
 import '../../shared/settings/settings_scope.dart';
 import '../../shared/settings/widgets/choice_tile.dart';
 import '../../shared/settings/widgets/settings_section.dart';
 import '../../shared/settings/widgets/settings_tile.dart';
 import '../../shared/settings/widgets/switch_tile.dart';
+import '../../shared/tts/open_tts_settings.dart';
+import '../../shared/tts/tts_service.dart';
 import '../../shared/voice/voice_input_controller.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -57,7 +60,7 @@ class SettingsPage extends StatelessWidget {
       builder: (ctx) {
         return SafeArea(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.max,
             children: [
               ListTile(
                 title: Text(title, style: Theme.of(ctx).textTheme.titleMedium),
@@ -330,6 +333,7 @@ class SettingsPage extends StatelessWidget {
                   value: s.voiceNarrationEnabled,
                   onChanged: controller.setVoiceNarrationEnabled,
                 ),
+                _VoiceNarrationDetails(settings: s, controller: controller),
                 SwitchTile(
                   leading: const Icon(Icons.music_note_outlined),
                   title: t?.backgroundMusic ?? 'Background music',
@@ -461,6 +465,298 @@ class SettingsPage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _VoiceNarrationDetails extends StatefulWidget {
+  final AppSettings settings;
+  final SettingsController controller;
+
+  const _VoiceNarrationDetails({
+    required this.settings,
+    required this.controller,
+  });
+
+  @override
+  State<_VoiceNarrationDetails> createState() => _VoiceNarrationDetailsState();
+}
+
+class _VoiceNarrationDetailsState extends State<_VoiceNarrationDetails> {
+  Future<List<Map<String, String>>>? _voicesFuture;
+  bool _onlyCurrentLanguage = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Lazy-load voices once (best-effort). If plugin isn't available, list is empty.
+    _voicesFuture ??= context.read<TtsService>().listVoices();
+  }
+
+  String _voiceLabel(Map<String, String>? v) {
+    if (v == null) return 'System default';
+    final name = (v['name'] ?? '').trim();
+    final locale = (v['locale'] ?? '').trim();
+    if (name.isEmpty && locale.isEmpty) return 'System default';
+    if (locale.isEmpty) return name;
+    if (name.isEmpty) return locale;
+    return '$name ($locale)';
+  }
+
+  String? _normalizeLocale(String? locale) {
+    final raw = locale?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    switch (raw.toLowerCase()) {
+      case 'ru':
+        return 'ru-RU';
+      case 'en':
+        return 'en-US';
+      case 'hy':
+        return 'hy-AM';
+      default:
+        return raw;
+    }
+  }
+
+  String _testPhrase(String langCode) {
+    switch (langCode.toLowerCase()) {
+      case 'ru':
+        return 'Привет! Это проверка голоса.';
+      case 'hy':
+        return 'Բարև։ Սա ձայնի ստուգում է։';
+      case 'en':
+      default:
+        return 'Hello! This is a voice test.';
+    }
+  }
+
+  Future<void> _pickVoice(BuildContext context) async {
+    final t = AppLocalizations.of(context);
+    final s = widget.settings;
+
+    final picked = await showModalBottomSheet<Map<String, String>?>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  ListTile(
+                    title: Text(
+                      t?.defaultNarrationVoice ?? 'Narrator voice',
+                      style: Theme.of(ctx).textTheme.titleMedium,
+                    ),
+                  ),
+                  SwitchListTile(
+                    title: const Text('Only current language'),
+                    subtitle: Text(
+                      _onlyCurrentLanguage
+                          ? 'Showing voices for ${s.defaultLanguageCode.toUpperCase()}'
+                          : 'Showing all voices',
+                    ),
+                    value: _onlyCurrentLanguage,
+                    onChanged: (v) {
+                      setState(() => _onlyCurrentLanguage = v);
+                      setModalState(() {});
+                    },
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: FutureBuilder<List<Map<String, String>>>(
+                      future: _voicesFuture,
+                      builder: (context, snap) {
+                        final all = (snap.data ?? const [])
+                            .where(
+                              (v) =>
+                                  (v['name'] ?? '').trim().isNotEmpty &&
+                                  (v['locale'] ?? '').trim().isNotEmpty,
+                            )
+                            .toList(growable: false);
+
+                        final filter =
+                            _normalizeLocale(s.defaultLanguageCode) ??
+                            s.defaultLanguageCode;
+                        final base = filter.toLowerCase().split('-').first;
+
+                        final voices = _onlyCurrentLanguage
+                            ? all
+                                  .where((v) {
+                                    final l = (v['locale'] ?? '').toLowerCase();
+                                    return l == base || l.startsWith('$base-');
+                                  })
+                                  .toList(growable: false)
+                            : all;
+
+                        voices.sort((a, b) {
+                          final al = (a['locale'] ?? '').compareTo(
+                            b['locale'] ?? '',
+                          );
+                          if (al != 0) return al;
+                          return (a['name'] ?? '').compareTo(b['name'] ?? '');
+                        });
+
+                        return ListView(
+                          children: [
+                            ListTile(
+                              leading: const Icon(
+                                Icons.settings_suggest_outlined,
+                              ),
+                              title: Text(t?.system ?? 'System'),
+                              subtitle: const Text('System default'),
+                              onTap: () => Navigator.of(ctx).pop(null),
+                            ),
+                            const Divider(height: 1),
+                            if (snap.connectionState == ConnectionState.waiting)
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
+                            else if (snap.hasError)
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Text(
+                                  'Failed to load voices',
+                                  style: Theme.of(ctx).textTheme.bodyMedium,
+                                ),
+                              )
+                            else if (voices.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Text(
+                                  _onlyCurrentLanguage
+                                      ? 'No voices found for this language'
+                                      : 'No voices found on this device',
+                                  style: Theme.of(ctx).textTheme.bodyMedium,
+                                ),
+                              )
+                            else
+                              for (final v in voices)
+                                ListTile(
+                                  title: Text(v['name'] ?? ''),
+                                  subtitle: Text(v['locale'] ?? ''),
+                                  onTap: () => Navigator.of(ctx).pop(v),
+                                ),
+                            const SizedBox(height: 8),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted) return;
+    await widget.controller.setTtsVoice(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.settings;
+    if (!s.voiceNarrationEnabled) return const SizedBox.shrink();
+
+    final t = AppLocalizations.of(context);
+    final tts = context.read<TtsService>();
+
+    final currentVoice = s.ttsVoice;
+
+    return Column(
+      children: [
+        SettingsTile(
+          leading: const Icon(Icons.record_voice_over_outlined),
+          title: t?.defaultNarrationVoice ?? 'Narrator voice',
+          subtitle: _voiceLabel(currentVoice),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => _pickVoice(context),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Volume: ${s.ttsVolume.toStringAsFixed(2)}'),
+              Slider(
+                value: s.ttsVolume,
+                min: 0.0,
+                max: 1.0,
+                divisions: 20,
+                onChanged: (v) => widget.controller.setTtsVolume(v),
+              ),
+              const SizedBox(height: 8),
+              Text('Speed: ${s.ttsRate.toStringAsFixed(2)}'),
+              Slider(
+                value: s.ttsRate.clamp(0.1, 1.0),
+                min: 0.1,
+                max: 1.0,
+                divisions: 18,
+                onChanged: (v) => widget.controller.setTtsRate(v),
+              ),
+              const SizedBox(height: 8),
+              Text('Intensity: ${s.ttsPitch.toStringAsFixed(2)}'),
+              Slider(
+                value: s.ttsPitch.clamp(0.5, 2.0),
+                min: 0.5,
+                max: 2.0,
+                divisions: 15,
+                onChanged: (v) => widget.controller.setTtsPitch(v),
+              ),
+              const SizedBox(height: 8),
+              ValueListenableBuilder<bool>(
+                valueListenable: tts.speakingListenable,
+                builder: (context, speaking, _) {
+                  return FilledButton.icon(
+                    onPressed: () async {
+                      if (speaking) {
+                        await tts.stop();
+                        return;
+                      }
+                      await tts.speak(
+                        text: _testPhrase(s.defaultLanguageCode),
+                        // Use UI language as a best-effort default for the test.
+                        locale: s.defaultLanguageCode,
+                        voice: currentVoice,
+                        volume: s.ttsVolume,
+                        rate: s.ttsRate,
+                        pitch: s.ttsPitch,
+                      );
+                    },
+                    icon: Icon(speaking ? Icons.stop : Icons.volume_up),
+                    label: Text(speaking ? 'Stop' : 'Test voice'),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final ok = await openTtsSettings();
+                  if (!context.mounted) return;
+                  if (!ok) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          t?.openSettingsManually ??
+                              'Open system settings manually to manage voices.',
+                        ),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.settings_outlined),
+                label: Text('Open TTS settings'),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

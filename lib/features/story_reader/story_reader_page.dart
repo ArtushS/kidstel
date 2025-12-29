@@ -371,31 +371,54 @@ class _NarrationPanel extends StatelessWidget {
     final narration = context.watch<NarrationController>();
     final story = context.watch<StoryController>().state;
     final l10n = AppLocalizations.of(context)!;
+    final settings = SettingsScope.of(context).settings;
+    final narrationEnabled = settings.voiceNarrationEnabled;
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FilledButton.icon(
-              onPressed: narration.isSpeaking
-                  ? null
-                  : () {
-                      context.read<StoryController>().markReadingStarted();
-                      narration.speakChapter(last, locale: story.locale);
-                    },
-              icon: const Icon(Icons.play_arrow),
-              label: Text(l10n.readAloud),
+            Row(
+              children: [
+                FilledButton.icon(
+                  onPressed: (!narrationEnabled || narration.isSpeaking)
+                      ? null
+                      : () {
+                          context.read<StoryController>().markReadingStarted();
+                          narration.speakChapter(
+                            last,
+                            locale: story.locale,
+                            voice: settings.ttsVoice,
+                            volume: settings.ttsVolume,
+                            rate: settings.ttsRate,
+                            pitch: settings.ttsPitch,
+                          );
+                        },
+                  icon: const Icon(Icons.play_arrow),
+                  label: Text(l10n.readAloud),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: narration.isSpeaking ? narration.stop : null,
+                  icon: const Icon(Icons.stop),
+                  label: Text(l10n.stopReading),
+                ),
+                const Spacer(),
+                // Prepared for future settings UI (voice/rate/pitch).
+              ],
             ),
-            const SizedBox(width: 12),
-            OutlinedButton.icon(
-              onPressed: narration.isSpeaking ? narration.stop : null,
-              icon: const Icon(Icons.stop),
-              label: Text(l10n.stopReading),
-            ),
-            const Spacer(),
-            // Prepared for future settings UI (voice/rate/pitch).
+            if (!narrationEnabled) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Включите Voice narration в Settings',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -567,24 +590,33 @@ class _SpeakStopButtons extends StatelessWidget {
     final story = context.watch<StoryController>().state;
     final narration = context.watch<NarrationController>();
     final l10n = AppLocalizations.of(context)!;
+    final settings = SettingsScope.of(context).settings;
+    final narrationEnabled = settings.voiceNarrationEnabled;
 
     final last = story.chapters.isNotEmpty ? story.chapters.last : null;
+
+    final canStart = last != null && narrationEnabled;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           tooltip: narration.isSpeaking ? l10n.stopReading : l10n.readAloud,
-          onPressed: last == null
-              ? null
-              : () async {
-                  if (narration.isSpeaking) {
-                    await narration.stop();
-                  } else {
-                    context.read<StoryController>().markReadingStarted();
-                    await narration.speakChapter(last, locale: story.locale);
-                  }
-                },
+          onPressed: narration.isSpeaking
+              ? () async => narration.stop()
+              : (canStart
+                    ? () async {
+                        context.read<StoryController>().markReadingStarted();
+                        await narration.speakChapter(
+                          last,
+                          locale: story.locale,
+                          voice: settings.ttsVoice,
+                          volume: settings.ttsVolume,
+                          rate: settings.ttsRate,
+                          pitch: settings.ttsPitch,
+                        );
+                      }
+                    : null),
           icon: Icon(narration.isSpeaking ? Icons.stop : Icons.volume_up),
         ),
       ],

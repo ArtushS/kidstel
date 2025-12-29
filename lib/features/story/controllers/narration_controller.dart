@@ -15,16 +15,18 @@ class NarrationController extends ChangeNotifier {
   Future<void> speakChapter(
     StoryChapter chapter, {
     String? locale,
-    String? voice,
+    Map<String, String>? voice,
+    double? volume,
     double? rate,
     double? pitch,
   }) async {
     // Decide behavior when already speaking: restart from new chapter.
     await _tts.stop();
     await _tts.speak(
-      chapter.text,
+      text: chapter.text,
       locale: locale,
       voice: voice,
+      volume: volume,
       rate: rate,
       pitch: pitch,
     );
@@ -33,15 +35,17 @@ class NarrationController extends ChangeNotifier {
   Future<void> speakText(
     String text, {
     String? locale,
-    String? voice,
+    Map<String, String>? voice,
+    double? volume,
     double? rate,
     double? pitch,
   }) async {
     await _tts.stop();
     await _tts.speak(
-      text,
+      text: text,
       locale: locale,
       voice: voice,
+      volume: volume,
       rate: rate,
       pitch: pitch,
     );

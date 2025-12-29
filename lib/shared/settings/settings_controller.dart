@@ -57,6 +57,20 @@ class SettingsController extends ChangeNotifier {
   Future<void> setVoiceNarrationEnabled(bool value) =>
       _update(_settings.copyWith(voiceNarrationEnabled: value));
 
+  Future<void> setTtsVolume(double value) =>
+      _update(_settings.copyWith(ttsVolume: value.clamp(0.0, 1.0)));
+
+  Future<void> setTtsRate(double value) =>
+      _update(_settings.copyWith(ttsRate: value.clamp(0.1, 1.0)));
+
+  Future<void> setTtsPitch(double value) =>
+      _update(_settings.copyWith(ttsPitch: value.clamp(0.5, 2.0)));
+
+  Future<void> setTtsVoice(Map<String, String>? voice) {
+    final encoded = _settings.encodeTtsVoice(voice);
+    return _update(_settings.copyWith(ttsVoiceJson: encoded));
+  }
+
   Future<void> setBackgroundMusicEnabled(bool value) =>
       _update(_settings.copyWith(backgroundMusicEnabled: value));
 

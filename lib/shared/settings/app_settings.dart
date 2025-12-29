@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -98,6 +100,12 @@ class AppSettings {
   final bool soundEffectsEnabled;
   final bool autoPlayNarration;
 
+  // TTS (voice narration) details
+  final double ttsVolume; // 0..1
+  final double ttsRate; // speech rate
+  final double ttsPitch; // pitch ("intensity")
+  final String? ttsVoiceJson; // nullable; stores {name, locale}
+
   final bool safeModeEnabled;
   final bool disableScaryContent;
   final bool requireParentConfirmation;
@@ -119,6 +127,10 @@ class AppSettings {
     required this.backgroundMusicEnabled,
     required this.soundEffectsEnabled,
     required this.autoPlayNarration,
+    required this.ttsVolume,
+    required this.ttsRate,
+    required this.ttsPitch,
+    required this.ttsVoiceJson,
     required this.safeModeEnabled,
     required this.disableScaryContent,
     required this.requireParentConfirmation,
@@ -127,6 +139,35 @@ class AppSettings {
     required this.creativityLevel,
     required this.rememberPreferences,
   });
+
+  Map<String, String>? get ttsVoice {
+    final raw = ttsVoiceJson;
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        final m = Map<String, dynamic>.from(decoded);
+        final name = m['name']?.toString();
+        final locale = m['locale']?.toString();
+        final n = name?.trim() ?? '';
+        final l = locale?.trim() ?? '';
+        if (n.isNotEmpty && l.isNotEmpty) {
+          return {'name': n, 'locale': l};
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+    return null;
+  }
+
+  String? encodeTtsVoice(Map<String, String>? voice) {
+    if (voice == null) return null;
+    final name = (voice['name'] ?? '').trim();
+    final locale = (voice['locale'] ?? '').trim();
+    if (name.isEmpty || locale.isEmpty) return null;
+    return jsonEncode({'name': name, 'locale': locale});
+  }
 
   factory AppSettings.defaults() => const AppSettings(
     themeMode: ThemeMode.system,
@@ -140,6 +181,10 @@ class AppSettings {
     backgroundMusicEnabled: false,
     soundEffectsEnabled: true,
     autoPlayNarration: false,
+    ttsVolume: 1.0,
+    ttsRate: 0.6,
+    ttsPitch: 1.0,
+    ttsVoiceJson: null,
     safeModeEnabled: true,
     disableScaryContent: true,
     requireParentConfirmation: true,
@@ -161,6 +206,10 @@ class AppSettings {
     bool? backgroundMusicEnabled,
     bool? soundEffectsEnabled,
     bool? autoPlayNarration,
+    double? ttsVolume,
+    double? ttsRate,
+    double? ttsPitch,
+    String? ttsVoiceJson,
     bool? safeModeEnabled,
     bool? disableScaryContent,
     bool? requireParentConfirmation,
@@ -183,6 +232,10 @@ class AppSettings {
           backgroundMusicEnabled ?? this.backgroundMusicEnabled,
       soundEffectsEnabled: soundEffectsEnabled ?? this.soundEffectsEnabled,
       autoPlayNarration: autoPlayNarration ?? this.autoPlayNarration,
+      ttsVolume: ttsVolume ?? this.ttsVolume,
+      ttsRate: ttsRate ?? this.ttsRate,
+      ttsPitch: ttsPitch ?? this.ttsPitch,
+      ttsVoiceJson: ttsVoiceJson ?? this.ttsVoiceJson,
       safeModeEnabled: safeModeEnabled ?? this.safeModeEnabled,
       disableScaryContent: disableScaryContent ?? this.disableScaryContent,
       requireParentConfirmation:
@@ -207,6 +260,10 @@ class AppSettings {
     'backgroundMusicEnabled': backgroundMusicEnabled,
     'soundEffectsEnabled': soundEffectsEnabled,
     'autoPlayNarration': autoPlayNarration,
+    'ttsVolume': ttsVolume,
+    'ttsRate': ttsRate,
+    'ttsPitch': ttsPitch,
+    'ttsVoiceJson': ttsVoiceJson,
     'safeModeEnabled': safeModeEnabled,
     'disableScaryContent': disableScaryContent,
     'requireParentConfirmation': requireParentConfirmation,
@@ -262,6 +319,14 @@ class AppSettings {
       backgroundMusicEnabled: (json['backgroundMusicEnabled'] ?? false) as bool,
       soundEffectsEnabled: (json['soundEffectsEnabled'] ?? true) as bool,
       autoPlayNarration: (json['autoPlayNarration'] ?? false) as bool,
+      ttsVolume: ((json['ttsVolume'] ?? 1.0) as num).toDouble().clamp(0.0, 1.0),
+      ttsRate: ((json['ttsRate'] ?? 0.6) as num).toDouble().clamp(0.1, 1.0),
+      ttsPitch: ((json['ttsPitch'] ?? 1.0) as num).toDouble().clamp(0.5, 2.0),
+      ttsVoiceJson: (() {
+        final raw = json['ttsVoiceJson'];
+        final s = raw?.toString().trim() ?? '';
+        return s.isEmpty ? null : s;
+      })(),
       safeModeEnabled: (json['safeModeEnabled'] ?? true) as bool,
       disableScaryContent: (json['disableScaryContent'] ?? true) as bool,
       requireParentConfirmation:

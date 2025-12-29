@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -17,7 +19,7 @@ import '../shared/settings/settings_scope.dart';
 
 import '../shared/voice/voice_input_controller.dart';
 
-import '../shared/tts/mock_tts_service.dart';
+import '../shared/tts/flutter_tts_service.dart';
 import '../shared/tts/tts_service.dart';
 
 import '../features/story/repositories/story_repository.dart';
@@ -94,8 +96,13 @@ class _KidsTelAppState extends State<KidsTelApp> {
         Provider<AuthService>.value(value: _authService),
         ChangeNotifierProvider<AuthController>.value(value: _auth),
         Provider<TtsService>(
-          create: (_) => MockTtsService(),
-          dispose: (_, tts) => tts.dispose(),
+          create: (_) {
+            final tts = FlutterTtsService();
+            // Best-effort init; safe if plugin isn't available.
+            unawaited(tts.init());
+            return tts;
+          },
+          dispose: (_, tts) => unawaited(tts.dispose()),
         ),
         Provider<StoryRepository>(
           create: (_) => SharedPreferencesStoryRepository(),

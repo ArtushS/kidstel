@@ -8,15 +8,29 @@ class MockTtsService implements TtsService {
   final ValueNotifier<bool> _speaking = ValueNotifier(false);
 
   @override
-  ValueListenable<bool> get speaking => _speaking;
+  ValueListenable<bool> get speakingListenable => _speaking;
+
+  @override
+  ValueListenable<bool> get speaking => speakingListenable;
 
   Timer? _timer;
 
   @override
-  Future<void> speak(
-    String text, {
+  Future<void> init() async {
+    // No-op.
+  }
+
+  @override
+  Future<List<Map<String, String>>> listVoices({String? locale}) async {
+    return const [];
+  }
+
+  @override
+  Future<void> speak({
+    required String text,
     String? locale,
-    String? voice,
+    Map<String, String>? voice,
+    double? volume,
     double? rate,
     double? pitch,
   }) async {
@@ -42,7 +56,7 @@ class MockTtsService implements TtsService {
   }
 
   @override
-  void dispose() {
+  Future<void> dispose() async {
     _timer?.cancel();
     _timer = null;
     _speaking.dispose();
