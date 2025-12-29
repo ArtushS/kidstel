@@ -140,6 +140,7 @@ class SettingsPage extends StatelessWidget {
         _languages[s.defaultLanguageCode] ?? s.defaultLanguageCode;
 
     final t = AppLocalizations.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     // Fallback на случай, если локализация ещё не подхватилась (редко, но безопасно)
     final titleSettings = t?.settings ?? 'Settings';
@@ -216,6 +217,15 @@ class SettingsPage extends StatelessWidget {
             SettingsSection(
               title: titleStoryPrefs,
               children: [
+                _HeroNameTile(
+                  value: s.heroName,
+                  label: l10n.heroNameLabel,
+                  hint: l10n.heroNameHint,
+                  helper: l10n.heroNameHelper,
+                  onChanged: (v) {
+                    controller.setHeroName(v);
+                  },
+                ),
                 ChoiceTile<AgeGroup>(
                   leading: const Icon(Icons.cake_outlined),
                   title: t?.ageGroup ?? 'Age group',
@@ -462,6 +472,83 @@ class SettingsPage extends StatelessWidget {
             ),
 
             const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroNameTile extends StatefulWidget {
+  final String? value;
+  final String label;
+  final String hint;
+  final String helper;
+  final ValueChanged<String> onChanged;
+
+  const _HeroNameTile({
+    required this.value,
+    required this.label,
+    required this.hint,
+    required this.helper,
+    required this.onChanged,
+  });
+
+  @override
+  State<_HeroNameTile> createState() => _HeroNameTileState();
+}
+
+class _HeroNameTileState extends State<_HeroNameTile> {
+  late final TextEditingController _ctrl;
+  final FocusNode _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.value ?? '');
+  }
+
+  @override
+  void didUpdateWidget(covariant _HeroNameTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextText = widget.value ?? '';
+    if (!_focus.hasFocus && _ctrl.text != nextText) {
+      _ctrl.text = nextText;
+    }
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ListTile(
+      leading: const Icon(Icons.person_outline),
+      title: Text(widget.label),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.helper,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _ctrl,
+              focusNode: _focus,
+              decoration: InputDecoration(hintText: widget.hint, isDense: true),
+              onChanged: widget.onChanged,
+            ),
           ],
         ),
       ),

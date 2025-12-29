@@ -55,6 +55,24 @@ class StoryController extends ChangeNotifier {
 
   String _genericErrorMessage() => 'Something went wrong. Please try again.';
 
+  String _placeholderTitle() => 'New story';
+
+  bool _isLocalId(String id) => id.trim().startsWith('local_');
+
+  Future<void> saveToLibrary() async {
+    // Save best-effort, regardless of finished/unfinished. This supports:
+    // - immediate appearance in My Stories
+    // - persisting illustrations without a separate "final save" step
+    final storyId = _ensureStoryId(_state.storyId);
+    final toSave = _state.copyWith(
+      storyId: storyId,
+      isLoading: false,
+      clearError: true,
+      lastUpdated: _now(),
+    );
+    await _repository.upsert(toSave);
+  }
+
   int _stepsUsedFor(List<StoryChapter> chapters) {
     // Steps are the number of interactive continuations after the first chapter.
     return chapters.length <= 1 ? 0 : chapters.length - 1;
@@ -101,7 +119,10 @@ class StoryController extends ChangeNotifier {
     _readingStarted = false;
     _illustrationDebounce?.cancel();
 
+    final localId = _ensureStoryId('');
     _state = StoryState.empty().copyWith(
+      storyId: localId,
+      title: _placeholderTitle(),
       locale: _session.storyLang,
       session: _session,
       isLoading: true,
@@ -109,6 +130,9 @@ class StoryController extends ChangeNotifier {
       lastUpdated: _now(),
     );
     notifyListeners();
+
+    // Make the new story visible in "My Stories" immediately.
+    unawaited(saveToLibrary());
 
     final body = _buildGenerateBody();
     _lastRequestBody = Map<String, dynamic>.from(body);
@@ -166,13 +190,20 @@ class StoryController extends ChangeNotifier {
       idea: null,
     );
 
+    final localId = _ensureStoryId('');
+
     // Update locale/session right away (even before first chapter arrives).
     _state = _state.copyWith(
+      storyId: _state.storyId.trim().isEmpty ? localId : _state.storyId,
+      title: _state.title.trim().isEmpty ? _placeholderTitle() : _state.title,
       locale: _session.storyLang,
       session: _session,
       lastUpdated: _now(),
     );
     notifyListeners();
+
+    // Ensure it appears in "My Stories" as soon as the user enters the reader.
+    unawaited(saveToLibrary());
 
     final initial = args.initialResponse;
     if (initial != null) {
@@ -312,6 +343,7 @@ class StoryController extends ChangeNotifier {
     GenerateStoryResponse resp, {
     required bool replace,
   }) {
+    final prevId = _state.storyId;
     final chapter = StoryChapter.fromAgentResponse(resp);
 
     final nextChapters = replace
@@ -347,12 +379,20 @@ class StoryController extends ChangeNotifier {
 
     notifyListeners();
 
+    // If we initially saved with a local_* id, remove it once we have a server id.
+    if (_isLocalId(prevId) && prevId.trim().isNotEmpty && prevId != storyId) {
+      unawaited(_repository.delete(prevId));
+    }
+
+    unawaited(saveToLibrary());
+
     if (_readingStarted) {
       _scheduleIllustrationIfNeeded();
     }
   }
 
   void _appendAgentResponse(GenerateStoryResponse resp) {
+    final prevId = _state.storyId;
     final chapter = StoryChapter.fromAgentResponse(resp);
 
     final chapters = [..._state.chapters];
@@ -392,6 +432,12 @@ class StoryController extends ChangeNotifier {
     );
 
     notifyListeners();
+
+    if (_isLocalId(prevId) && prevId.trim().isNotEmpty && prevId != storyId) {
+      unawaited(_repository.delete(prevId));
+    }
+
+    unawaited(saveToLibrary());
 
     if (_readingStarted) {
       _scheduleIllustrationIfNeeded();
@@ -458,6 +504,9 @@ class StoryController extends ChangeNotifier {
         lastUpdated: _now(),
       );
       notifyListeners();
+
+      // Persist updated story with the illustration.
+      unawaited(saveToLibrary());
     } catch (e) {
       debugPrint('Illustration generation failed: $e');
       _state = _state.copyWith(

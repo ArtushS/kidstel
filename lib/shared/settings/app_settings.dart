@@ -95,6 +95,10 @@ class AppSettings {
   final StoryComplexity storyComplexity;
   final String defaultLanguageCode;
 
+  /// Optional field used to name the main hero. Empty string is allowed;
+  /// null means "not set".
+  final String? heroName;
+
   final bool voiceNarrationEnabled;
   final bool backgroundMusicEnabled;
   final bool soundEffectsEnabled;
@@ -123,6 +127,7 @@ class AppSettings {
     required this.storyLength,
     required this.storyComplexity,
     required this.defaultLanguageCode,
+    required this.heroName,
     required this.voiceNarrationEnabled,
     required this.backgroundMusicEnabled,
     required this.soundEffectsEnabled,
@@ -177,6 +182,7 @@ class AppSettings {
     storyLength: StoryLength.medium,
     storyComplexity: StoryComplexity.normal,
     defaultLanguageCode: 'en',
+    heroName: null,
     voiceNarrationEnabled: true,
     backgroundMusicEnabled: false,
     soundEffectsEnabled: true,
@@ -202,6 +208,7 @@ class AppSettings {
     StoryLength? storyLength,
     StoryComplexity? storyComplexity,
     String? defaultLanguageCode,
+    String? heroName,
     bool? voiceNarrationEnabled,
     bool? backgroundMusicEnabled,
     bool? soundEffectsEnabled,
@@ -226,6 +233,7 @@ class AppSettings {
       storyLength: storyLength ?? this.storyLength,
       storyComplexity: storyComplexity ?? this.storyComplexity,
       defaultLanguageCode: defaultLanguageCode ?? this.defaultLanguageCode,
+      heroName: heroName ?? this.heroName,
       voiceNarrationEnabled:
           voiceNarrationEnabled ?? this.voiceNarrationEnabled,
       backgroundMusicEnabled:
@@ -256,6 +264,7 @@ class AppSettings {
     'storyLength': storyLength.name,
     'storyComplexity': storyComplexity.name,
     'defaultLanguageCode': defaultLanguageCode,
+    'heroName': heroName,
     'voiceNarrationEnabled': voiceNarrationEnabled,
     'backgroundMusicEnabled': backgroundMusicEnabled,
     'soundEffectsEnabled': soundEffectsEnabled,
@@ -315,6 +324,12 @@ class AppSettings {
         StoryComplexity.normal,
       ),
       defaultLanguageCode: (json['defaultLanguageCode'] ?? 'en') as String,
+      heroName: (() {
+        // Migration: older versions stored this setting under "childName".
+        final raw = json['heroName'] ?? json['childName'];
+        if (raw == null) return null;
+        return raw.toString();
+      })(),
       voiceNarrationEnabled: (json['voiceNarrationEnabled'] ?? true) as bool,
       backgroundMusicEnabled: (json['backgroundMusicEnabled'] ?? false) as bool,
       soundEffectsEnabled: (json['soundEffectsEnabled'] ?? true) as bool,

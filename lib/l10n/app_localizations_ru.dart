@@ -33,6 +33,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get heroDog => 'Пёс';
 
   @override
+  String get heroBoy => 'Мальчик';
+
+  @override
+  String get heroGirl => 'Девочка';
+
+  @override
   String get generate => 'Сгенерировать';
 
   @override
@@ -238,7 +244,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get locationRandom => 'Случайная';
 
   @override
+  String get randomLocationLabel => 'Случайная локация';
+
+  @override
   String get storyType => 'Тип истории';
+
+  @override
+  String get randomStyleLabel => 'Случайный стиль';
 
   @override
   String get typeFriendly => 'Дружеская';
@@ -263,6 +275,25 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get voiceInput => 'Голосовой ввод';
+
+  @override
+  String get ttsSystemLabel => 'TTS: система';
+
+  @override
+  String get childNameLabel => 'Имя ребёнка';
+
+  @override
+  String get childNameHint => 'Необязательно';
+
+  @override
+  String get heroNameLabel => 'Имя героя';
+
+  @override
+  String get heroNameHint => 'Необязательно';
+
+  @override
+  String get heroNameHelper =>
+      'Если указано, история будет использовать это имя для главного героя.';
 
   @override
   String get voiceHelpTitle => 'Помощь по голосовому вводу';
@@ -315,6 +346,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get generateRequestMVP => 'Запрос генерации (MVP)';
+
+  @override
+  String get generating => 'Генерация…';
+
+  @override
+  String get generationFailedTitle => 'Генерация не удалась';
+
+  @override
+  String get sttNoResults => 'Распознавание речи не дало результата';
 
   @override
   String get ok => 'ОК';

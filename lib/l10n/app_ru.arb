@@ -8,6 +8,8 @@
   "heroBear": "Медведь",
   "heroCat": "Кот",
   "heroDog": "Пёс",
+  "heroBoy": "Мальчик",
+  "heroGirl": "Девочка",
   "generate": "Сгенерировать",
   "settings": "Настройки",
   "appearance": "Внешний вид",
@@ -76,7 +78,9 @@
   "locationSnowCastle": "Снежный замок",
   "locationUnderwater": "Подводный мир",
   "locationRandom": "Случайная",
+  "randomLocationLabel": "Случайная локация",
   "storyType": "Тип истории",
+  "randomStyleLabel": "Случайный стиль",
   "typeFriendly": "Дружеская",
   "typeAdventure": "Приключение",
   "typeMagic": "Волшебная",
@@ -85,6 +89,12 @@
   "toggleDarkMode": "Переключить тёмный режим",
   "menu": "Меню",
   "voiceInput": "Голосовой ввод",
+  "ttsSystemLabel": "TTS: система",
+  "childNameLabel": "Имя ребёнка",
+  "childNameHint": "Необязательно",
+  "heroNameLabel": "Имя героя",
+  "heroNameHint": "Необязательно",
+  "heroNameHelper": "Если указано, история будет использовать это имя для главного героя.",
   "voiceHelpTitle": "Помощь по голосовому вводу",
   "voiceHelpSubtitle": "Армянский голосовой ввод и языки",
   "voiceHelpArmenianTitle": "Армянский голосовой ввод",
@@ -101,6 +111,9 @@
   "tryAgain": "Проверить снова",
   "close": "Закрыть",
   "generateRequestMVP": "Запрос генерации (MVP)",
+  "generating": "Генерация…",
+  "generationFailedTitle": "Генерация не удалась",
+  "sttNoResults": "Распознавание речи не дало результата",
   "ok": "ОК",
   "reading": "Чтение",
   "noStoryYet": "Пока нет открытой истории",
@@ -121,5 +134,45 @@
   "saveToMyStories": "Сохранить в Мои истории",
 
   "interactiveStories": "Включить интерактивные истории",
-  "interactiveStoriesSubtitle": "Показывать варианты выбора (до 3 шагов), чтобы продолжать историю"
+  "interactiveStoriesSubtitle": "Показывать варианты выбора (до 3 шагов), чтобы продолжать историю",
+
+  "@ttsSystemLabel": {
+    "description": "Короткая информационная подпись под полем идеи на экране создания истории." 
+  },
+  "@childNameLabel": {
+    "description": "Подпись поля настроек для имени ребёнка (необязательное поле)."
+  },
+  "@childNameHint": {
+    "description": "Подсказка для поля имени ребёнка (необязательное поле)."
+  },
+  "@heroBoy": {
+    "description": "Подпись варианта героя (мальчик) в карусели героя."
+  },
+  "@heroGirl": {
+    "description": "Подпись варианта героя (девочка) в карусели героя."
+  },
+  "@randomLocationLabel": {
+    "description": "Подпись варианта 'случайная локация' в карусели локаций."
+  },
+  "@randomStyleLabel": {
+    "description": "Подпись варианта 'случайный стиль' в карусели стиля."
+  },
+  "@generating": {
+    "description": "Надпись на кнопке во время генерации истории."
+  },
+  "@generationFailedTitle": {
+    "description": "Заголовок диалога, когда генерация истории не удалась."
+  },
+  "@sttNoResults": {
+    "description": "Текст Snackbar, когда распознавание речи завершилось без результата."
+  },
+  "@heroNameLabel": {
+    "description": "Подпись поля настроек для имени героя (необязательное поле, используется как имя главного персонажа при генерации истории)."
+  },
+  "@heroNameHint": {
+    "description": "Подсказка для поля имени героя (необязательное поле)."
+  },
+  "@heroNameHelper": {
+    "description": "Короткий поясняющий текст над полем имени героя в настройках."
+  }
 }

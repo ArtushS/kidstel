@@ -33,6 +33,12 @@ class AppLocalizationsHy extends AppLocalizations {
   String get heroDog => 'Շուն';
 
   @override
+  String get heroBoy => 'Տղա';
+
+  @override
+  String get heroGirl => 'Աղջիկ';
+
+  @override
   String get generate => 'Ստեղծել';
 
   @override
@@ -239,7 +245,13 @@ class AppLocalizationsHy extends AppLocalizations {
   String get locationRandom => 'Պատահական';
 
   @override
+  String get randomLocationLabel => 'Պատահական վայր';
+
+  @override
   String get storyType => 'Պատմության տեսակ';
+
+  @override
+  String get randomStyleLabel => 'Պատահական ոճ';
 
   @override
   String get typeFriendly => 'Ընկերական';
@@ -264,6 +276,25 @@ class AppLocalizationsHy extends AppLocalizations {
 
   @override
   String get voiceInput => 'Ձայնային ներածում';
+
+  @override
+  String get ttsSystemLabel => 'TTS: համակարգ';
+
+  @override
+  String get childNameLabel => 'Երեխայի անունը';
+
+  @override
+  String get childNameHint => 'Ոչ պարտադիր';
+
+  @override
+  String get heroNameLabel => 'Հերոսի անունը';
+
+  @override
+  String get heroNameHint => 'Ոչ պարտադիր';
+
+  @override
+  String get heroNameHelper =>
+      'Եթե լրացնես, պատմության գլխավոր հերոսը կունենա այս անունը։';
 
   @override
   String get voiceHelpTitle => 'Ձայնային ներածման օգնություն';
@@ -316,6 +347,15 @@ class AppLocalizationsHy extends AppLocalizations {
 
   @override
   String get generateRequestMVP => 'Ստեղծման հարցում (MVP)';
+
+  @override
+  String get generating => 'Ստեղծում…';
+
+  @override
+  String get generationFailedTitle => 'Ստեղծումը չհաջողվեց';
+
+  @override
+  String get sttNoResults => 'Ձայնի ճանաչումը արդյունք չտվեց';
 
   @override
   String get ok => 'Լավ';

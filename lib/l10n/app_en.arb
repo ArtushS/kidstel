@@ -8,6 +8,8 @@
   "heroBear": "Bear",
   "heroCat": "Cat",
   "heroDog": "Dog",
+  "heroBoy": "Boy",
+  "heroGirl": "Girl",
   "generate": "Generate",
   "settings": "Settings",
   "appearance": "Appearance",
@@ -76,7 +78,9 @@
   "locationSnowCastle": "Snow castle",
   "locationUnderwater": "Underwater",
   "locationRandom": "Random",
+  "randomLocationLabel": "Random location",
   "storyType": "Story Type",
+  "randomStyleLabel": "Random style",
   "typeFriendly": "Friendly",
   "typeAdventure": "Adventure",
   "typeMagic": "Magic",
@@ -85,6 +89,12 @@
   "toggleDarkMode": "Toggle dark mode",
   "menu": "Menu",
   "voiceInput": "Voice input",
+  "ttsSystemLabel": "TTS: system",
+  "childNameLabel": "Child name",
+  "childNameHint": "Optional",
+  "heroNameLabel": "Hero name",
+  "heroNameHint": "Optional",
+  "heroNameHelper": "If set, the story will use this name for the main hero.",
   "voiceHelpTitle": "Voice input help",
   "voiceHelpSubtitle": "Armenian voice input & languages",
   "voiceHelpArmenianTitle": "Armenian voice input",
@@ -101,6 +111,9 @@
   "tryAgain": "Try again",
   "close": "Close",
   "generateRequestMVP": "Generate request (MVP)",
+  "generating": "Generating…",
+  "generationFailedTitle": "Generation failed",
+  "sttNoResults": "Speech recognition produced no results",
   "ok": "OK",
   "reading": "Reading",
   "noStoryYet": "No story yet",
@@ -122,5 +135,45 @@
   "saveToMyStories": "Save to My Stories",
 
   "interactiveStories": "Enable interactive stories",
-  "interactiveStoriesSubtitle": "Show choices (up to 3 steps) to continue the story"
+  "interactiveStoriesSubtitle": "Show choices (up to 3 steps) to continue the story",
+
+  "@ttsSystemLabel": {
+    "description": "Short informational label shown under the idea input on Create New Story page."
+  },
+  "@childNameLabel": {
+    "description": "Settings field label for an optional child name."
+  },
+  "@childNameHint": {
+    "description": "Settings field hint for an optional child name."
+  },
+  "@heroBoy": {
+    "description": "Hero option label shown in the hero carousel (boy)."
+  },
+  "@heroGirl": {
+    "description": "Hero option label shown in the hero carousel (girl)."
+  },
+  "@randomLocationLabel": {
+    "description": "Label for the 'random location' option in the location carousel."
+  },
+  "@randomStyleLabel": {
+    "description": "Label for the 'random style' option in the style carousel."
+  },
+  "@generating": {
+    "description": "Button label while story generation is in progress."
+  },
+  "@generationFailedTitle": {
+    "description": "Dialog title shown when story generation fails."
+  },
+  "@sttNoResults": {
+    "description": "Snackbar text shown when speech recognition ends with empty result."
+  },
+  "@heroNameLabel": {
+    "description": "Settings field label for an optional hero name (used as the main character's name when generating stories)."
+  },
+  "@heroNameHint": {
+    "description": "Settings field hint for an optional hero name."
+  },
+  "@heroNameHelper": {
+    "description": "Short helper text shown above the hero name input in Settings."
+  }
 }

@@ -148,6 +148,18 @@ abstract class AppLocalizations {
   /// **'Dog'**
   String get heroDog;
 
+  /// Hero option label shown in the hero carousel (boy).
+  ///
+  /// In en, this message translates to:
+  /// **'Boy'**
+  String get heroBoy;
+
+  /// Hero option label shown in the hero carousel (girl).
+  ///
+  /// In en, this message translates to:
+  /// **'Girl'**
+  String get heroGirl;
+
   /// No description provided for @generate.
   ///
   /// In en, this message translates to:
@@ -556,11 +568,23 @@ abstract class AppLocalizations {
   /// **'Random'**
   String get locationRandom;
 
+  /// Label for the 'random location' option in the location carousel.
+  ///
+  /// In en, this message translates to:
+  /// **'Random location'**
+  String get randomLocationLabel;
+
   /// No description provided for @storyType.
   ///
   /// In en, this message translates to:
   /// **'Story Type'**
   String get storyType;
+
+  /// Label for the 'random style' option in the style carousel.
+  ///
+  /// In en, this message translates to:
+  /// **'Random style'**
+  String get randomStyleLabel;
 
   /// No description provided for @typeFriendly.
   ///
@@ -609,6 +633,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Voice input'**
   String get voiceInput;
+
+  /// Short informational label shown under the idea input on Create New Story page.
+  ///
+  /// In en, this message translates to:
+  /// **'TTS: system'**
+  String get ttsSystemLabel;
+
+  /// Settings field label for an optional child name.
+  ///
+  /// In en, this message translates to:
+  /// **'Child name'**
+  String get childNameLabel;
+
+  /// Settings field hint for an optional child name.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get childNameHint;
+
+  /// Settings field label for an optional hero name (used as the main character's name when generating stories).
+  ///
+  /// In en, this message translates to:
+  /// **'Hero name'**
+  String get heroNameLabel;
+
+  /// Settings field hint for an optional hero name.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get heroNameHint;
+
+  /// Short helper text shown above the hero name input in Settings.
+  ///
+  /// In en, this message translates to:
+  /// **'If set, the story will use this name for the main hero.'**
+  String get heroNameHelper;
 
   /// No description provided for @voiceHelpTitle.
   ///
@@ -705,6 +765,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Generate request (MVP)'**
   String get generateRequestMVP;
+
+  /// Button label while story generation is in progress.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating…'**
+  String get generating;
+
+  /// Dialog title shown when story generation fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation failed'**
+  String get generationFailedTitle;
+
+  /// Snackbar text shown when speech recognition ends with empty result.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech recognition produced no results'**
+  String get sttNoResults;
 
   /// No description provided for @ok.
   ///

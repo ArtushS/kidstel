@@ -25,7 +25,7 @@ import '../shared/tts/tts_service.dart';
 import '../features/story/repositories/story_repository.dart';
 import '../features/story/repositories/shared_preferences_story_repository.dart';
 import '../features/story/services/image_generation_service.dart';
-import '../features/story/services/mock_image_generation_service.dart';
+import '../features/story/services/agent_image_generation_service.dart';
 
 import '../features/story/services/story_service.dart';
 import 'config.dart';
@@ -107,11 +107,13 @@ class _KidsTelAppState extends State<KidsTelApp> {
         Provider<StoryRepository>(
           create: (_) => SharedPreferencesStoryRepository(),
         ),
-        Provider<ImageGenerationService>(
-          create: (_) => MockImageGenerationService(),
-        ),
         Provider<StoryService>(
           create: (_) => StoryService(endpointUrl: storyAgentUrl),
+        ),
+        Provider<ImageGenerationService>(
+          create: (ctx) => AgentImageGenerationService(
+            storyService: ctx.read<StoryService>(),
+          ),
         ),
         ChangeNotifierProvider<VoiceInputController>(
           create: (_) => VoiceInputController()..init(),

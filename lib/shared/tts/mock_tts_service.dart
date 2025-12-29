@@ -7,11 +7,18 @@ import 'tts_service.dart';
 class MockTtsService implements TtsService {
   final ValueNotifier<bool> _speaking = ValueNotifier(false);
 
+  void Function(TtsProgress progress)? _progressListener;
+
   @override
   ValueListenable<bool> get speakingListenable => _speaking;
 
   @override
   ValueListenable<bool> get speaking => speakingListenable;
+
+  @override
+  void setProgressListener(void Function(TtsProgress progress)? listener) {
+    _progressListener = listener;
+  }
 
   Timer? _timer;
 
@@ -41,6 +48,12 @@ class MockTtsService implements TtsService {
 
     _speaking.value = true;
 
+    // Progress is intentionally not simulated here.
+    // Real engines may or may not provide it; controller logic must handle both.
+    _progressListener?.call(
+      TtsProgress(text: text, start: 0, end: 0, word: null),
+    );
+
     // Simulate duration proportional to text length, capped.
     final ms = (text.length * 25).clamp(600, 8000);
     _timer = Timer(Duration(milliseconds: ms), () {
@@ -59,6 +72,7 @@ class MockTtsService implements TtsService {
   Future<void> dispose() async {
     _timer?.cancel();
     _timer = null;
+    _progressListener = null;
     _speaking.dispose();
   }
 }

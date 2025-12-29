@@ -1,5 +1,19 @@
 import 'package:flutter/foundation.dart';
 
+class TtsProgress {
+  final String text;
+  final int start;
+  final int end;
+  final String? word;
+
+  const TtsProgress({
+    required this.text,
+    required this.start,
+    required this.end,
+    this.word,
+  });
+}
+
 abstract class TtsService {
   /// Initialize the engine (best-effort). Safe to call multiple times.
   Future<void> init();
@@ -9,6 +23,11 @@ abstract class TtsService {
 
   /// Back-compat alias used by older call sites.
   ValueListenable<bool> get speaking => speakingListenable;
+
+  /// Register a listener for progress updates.
+  ///
+  /// Platforms/voices may not emit progress updates; callers must be resilient.
+  void setProgressListener(void Function(TtsProgress progress)? listener);
 
   /// Speak the given [text] with optional parameters.
   Future<void> speak({

@@ -19,6 +19,8 @@
   "heroBear": "Արջ",
   "heroCat": "Կատու",
   "heroDog": "Շուն",
+  "heroBoy": "Տղա",
+  "heroGirl": "Աղջիկ",
   "reduceMotion": "Նվազեցնել շարժումը եթե անջատված է",
   "ageGroup": "Տարիքային խումբ",
   "storyLength": "Պատմության երկարությունը",
@@ -76,7 +78,9 @@
   "locationSnowCastle": "Ձյունե ամրոց",
   "locationUnderwater": "Ստորջրյա",
   "locationRandom": "Պատահական",
+  "randomLocationLabel": "Պատահական վայր",
   "storyType": "Պատմության տեսակ",
+  "randomStyleLabel": "Պատահական ոճ",
   "typeFriendly": "Ընկերական",
   "typeAdventure": "Արկածային",
   "typeMagic": "Կախարդական",
@@ -85,6 +89,12 @@
   "toggleDarkMode": "Փոխել մութ ռեժիմը",
   "menu": "Ընտրացանկ",
   "voiceInput": "Ձայնային ներածում",
+  "ttsSystemLabel": "TTS: համակարգ",
+  "childNameLabel": "Երեխայի անունը",
+  "childNameHint": "Ոչ պարտադիր",
+  "heroNameLabel": "Հերոսի անունը",
+  "heroNameHint": "Ոչ պարտադիր",
+  "heroNameHelper": "Եթե լրացնես, պատմության գլխավոր հերոսը կունենա այս անունը։",
   "voiceHelpTitle": "Ձայնային ներածման օգնություն",
   "voiceHelpSubtitle": "Հայերեն ձայնային ներածում և լեզուներ",
   "voiceHelpArmenianTitle": "Հայերեն ձայնային ներածում",
@@ -101,6 +111,9 @@
   "tryAgain": "Փորձել նորից",
   "close": "Փակել",
   "generateRequestMVP": "Ստեղծման հարցում (MVP)",
+  "generating": "Ստեղծում…",
+  "generationFailedTitle": "Ստեղծումը չհաջողվեց",
+  "sttNoResults": "Ձայնի ճանաչումը արդյունք չտվեց",
   "ok": "Լավ",
   "reading": "Ընթերցում",
   "noStoryYet": "Դեռևս պատմություն չկա",
@@ -121,5 +134,45 @@
   "saveToMyStories": "Պահել Իմ հեքիաթները",
 
   "interactiveStories": "Միացնել ինտերակտիվ պատմությունները",
-  "interactiveStoriesSubtitle": "Ցուցադրել ընտրանքներ (մինչև 3 քայլ)՝ պատմությունը շարունակելու համար"
+  "interactiveStoriesSubtitle": "Ցուցադրել ընտրանքներ (մինչև 3 քայլ)՝ պատմությունը շարունակելու համար",
+
+  "@ttsSystemLabel": {
+    "description": "Կարճ տեղեկատվական պիտակ՝ նոր պատմության ստեղծման էջում գաղափարի դաշտի տակ։"
+  },
+  "@childNameLabel": {
+    "description": "Կարգավորումների դաշտի պիտակ՝ երեխայի անունը (ոչ պարտադիր)։"
+  },
+  "@childNameHint": {
+    "description": "Կարգավորումների դաշտի հուշում՝ երեխայի անունը (ոչ պարտադիր)։"
+  },
+  "@heroBoy": {
+    "description": "Հերոսի տարբերակի պիտակ՝ տղա (հերոսի կարուսելում)։"
+  },
+  "@heroGirl": {
+    "description": "Հերոսի տարբերակի պիտակ՝ աղջիկ (հերոսի կարուսելում)։"
+  },
+  "@randomLocationLabel": {
+    "description": "Պիտակ՝ 'պատահական վայր' տարբերակի համար (վայրերի կարուսելում)։"
+  },
+  "@randomStyleLabel": {
+    "description": "Պիտակ՝ 'պատահական ոճ' տարբերակի համար (ոճի կարուսելում)։"
+  },
+  "@generating": {
+    "description": "Կոճակի գրությունը, երբ պատմության ստեղծումը ընթացքի մեջ է։"
+  },
+  "@generationFailedTitle": {
+    "description": "Երբ պատմության ստեղծումը ձախողվում է, ցուցադրվող երկխոսության վերնագիր։"
+  },
+  "@sttNoResults": {
+    "description": "Snackbar-ի տեքստը, երբ ձայնի ճանաչումը ավարտվում է առանց արդյունքի։"
+  },
+  "@heroNameLabel": {
+    "description": "Կարգավորումների դաշտի պիտակ՝ հերոսի անունը (ոչ պարտադիր, օգտագործվում է որպես գլխավոր հերոսի անունը պատմություն գեներացնելու ժամանակ)։"
+  },
+  "@heroNameHint": {
+    "description": "Կարգավորումների դաշտի հուշում՝ հերոսի անունը (ոչ պարտադիր)։"
+  },
+  "@heroNameHelper": {
+    "description": "Կարճ բացատրական տեքստ՝ հերոսի անվան դաշտի վերևում կարգավորումների էջում։"
+  }
 }

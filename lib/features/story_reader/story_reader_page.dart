@@ -374,6 +374,9 @@ class _NarrationPanel extends StatelessWidget {
     final settings = SettingsScope.of(context).settings;
     final narrationEnabled = settings.voiceNarrationEnabled;
 
+    final isSpeaking = narration.isSpeaking;
+    final isPaused = narration.isPaused;
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
@@ -381,33 +384,133 @@ class _NarrationPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 FilledButton.icon(
-                  onPressed: (!narrationEnabled || narration.isSpeaking)
+                  onPressed: (!narrationEnabled || isSpeaking)
                       ? null
                       : () {
                           context.read<StoryController>().markReadingStarted();
-                          narration.speakChapter(
-                            last,
-                            locale: story.locale,
-                            voice: settings.ttsVoice,
-                            volume: settings.ttsVolume,
-                            rate: settings.ttsRate,
-                            pitch: settings.ttsPitch,
-                          );
+                          if (isPaused) {
+                            narration.resumeNarration(
+                              locale: story.locale,
+                              voice: settings.ttsVoice,
+                              volume: settings.ttsVolume,
+                              rate: settings.ttsRate,
+                              pitch: settings.ttsPitch,
+                            );
+                          } else {
+                            narration.speakChapter(
+                              last,
+                              locale: story.locale,
+                              voice: settings.ttsVoice,
+                              volume: settings.ttsVolume,
+                              rate: settings.ttsRate,
+                              pitch: settings.ttsPitch,
+                            );
+                          }
                         },
-                  icon: const Icon(Icons.play_arrow),
-                  label: Text(l10n.readAloud),
+                  icon: Icon(isPaused ? Icons.play_arrow : Icons.volume_up),
+                  label: Text(isPaused ? 'Resume' : l10n.readAloud),
                 ),
-                const SizedBox(width: 12),
                 OutlinedButton.icon(
-                  onPressed: narration.isSpeaking ? narration.stop : null,
+                  onPressed: (narrationEnabled && isSpeaking)
+                      ? narration.pauseNarration
+                      : null,
+                  icon: const Icon(Icons.pause),
+                  label: const Text('Pause'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: (isSpeaking || isPaused)
+                      ? narration.stopNarration
+                      : null,
                   icon: const Icon(Icons.stop),
                   label: Text(l10n.stopReading),
                 ),
-                const Spacer(),
-                // Prepared for future settings UI (voice/rate/pitch).
+                OutlinedButton.icon(
+                  onPressed: (!narrationEnabled || isSpeaking)
+                      ? null
+                      : () async {
+                          narration.prepareChapter(last);
+                          final segs = narration.segments;
+
+                          await showModalBottomSheet<void>(
+                            context: context,
+                            showDragHandle: true,
+                            builder: (sheetContext) {
+                              final theme = Theme.of(sheetContext);
+
+                              String preview(String s) {
+                                final oneLine = s.trim().replaceAll(
+                                  RegExp(r'\s+'),
+                                  ' ',
+                                );
+                                if (oneLine.length <= 60) return oneLine;
+                                return '${oneLine.substring(0, 60)}…';
+                              }
+
+                              return SafeArea(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        8,
+                                        16,
+                                        8,
+                                      ),
+                                      child: Text(
+                                        'Start from…',
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                    ),
+                                    Flexible(
+                                      child: ListView.separated(
+                                        shrinkWrap: true,
+                                        itemCount: segs.length,
+                                        separatorBuilder: (context, index) =>
+                                            const Divider(height: 1),
+                                        itemBuilder: (ctx, i) {
+                                          return ListTile(
+                                            dense: true,
+                                            title: Text(preview(segs[i])),
+                                            onTap: () async {
+                                              Navigator.of(sheetContext).pop();
+                                              context
+                                                  .read<StoryController>()
+                                                  .markReadingStarted();
+                                              await narration.startFromSegment(
+                                                last,
+                                                i,
+                                                locale: story.locale,
+                                                voice: settings.ttsVoice,
+                                                volume: settings.ttsVolume,
+                                                rate: settings.ttsRate,
+                                                pitch: settings.ttsPitch,
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                  icon: const Icon(Icons.format_list_bulleted),
+                  label: const Text('Start from…'),
+                ),
               ],
             ),
             if (!narrationEnabled) ...[
@@ -469,6 +572,21 @@ class _ImagePanel extends StatelessWidget {
               child: AspectRatio(
                 aspectRatio: 16 / 9,
                 child: _IllustrationImage(source: url),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await context.read<StoryController>().saveToLibrary();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('Saved.')));
+                },
+                icon: const Icon(Icons.bookmark_add_outlined),
+                label: const Text('Save image'),
               ),
             ),
           ],
@@ -594,30 +712,49 @@ class _SpeakStopButtons extends StatelessWidget {
     final narrationEnabled = settings.voiceNarrationEnabled;
 
     final last = story.chapters.isNotEmpty ? story.chapters.last : null;
+    if (!narrationEnabled || last == null) return const SizedBox.shrink();
 
-    final canStart = last != null && narrationEnabled;
+    final isSpeaking = narration.isSpeaking;
+    final isPaused = narration.isPaused;
+
+    Future<void> start() async {
+      context.read<StoryController>().markReadingStarted();
+      await narration.speakChapter(
+        last,
+        locale: story.locale,
+        voice: settings.ttsVoice,
+        volume: settings.ttsVolume,
+        rate: settings.ttsRate,
+        pitch: settings.ttsPitch,
+      );
+    }
+
+    Future<void> resume() async {
+      context.read<StoryController>().markReadingStarted();
+      narration.resumeNarration(
+        locale: story.locale,
+        voice: settings.ttsVoice,
+        volume: settings.ttsVolume,
+        rate: settings.ttsRate,
+        pitch: settings.ttsPitch,
+      );
+    }
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          tooltip: narration.isSpeaking ? l10n.stopReading : l10n.readAloud,
-          onPressed: narration.isSpeaking
-              ? () async => narration.stop()
-              : (canStart
-                    ? () async {
-                        context.read<StoryController>().markReadingStarted();
-                        await narration.speakChapter(
-                          last,
-                          locale: story.locale,
-                          voice: settings.ttsVoice,
-                          volume: settings.ttsVolume,
-                          rate: settings.ttsRate,
-                          pitch: settings.ttsPitch,
-                        );
-                      }
-                    : null),
-          icon: Icon(narration.isSpeaking ? Icons.stop : Icons.volume_up),
+          tooltip: isSpeaking
+              ? 'Pause'
+              : (isPaused ? 'Continue' : l10n.readAloud),
+          onPressed: isSpeaking
+              ? narration.pauseNarration
+              : (isPaused ? resume : start),
+          icon: Icon(
+            isSpeaking
+                ? Icons.pause
+                : (isPaused ? Icons.play_arrow : Icons.volume_up),
+          ),
         ),
       ],
     );

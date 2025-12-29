@@ -14,6 +14,8 @@ class FlutterTtsService implements TtsService {
 
   final ValueNotifier<bool> _speaking = ValueNotifier(false);
 
+  void Function(TtsProgress progress)? _progressListener;
+
   FlutterTts? _tts;
   bool _initTried = false;
   bool _available = false;
@@ -24,6 +26,11 @@ class FlutterTtsService implements TtsService {
 
   @override
   ValueListenable<bool> get speaking => speakingListenable;
+
+  @override
+  void setProgressListener(void Function(TtsProgress progress)? listener) {
+    _progressListener = listener;
+  }
 
   @override
   Future<void> init() {
@@ -69,6 +76,13 @@ class FlutterTtsService implements TtsService {
         if (kDebugMode) {
           debugPrint('FlutterTtsService.onError: $err');
         }
+      });
+
+      // Track progress offsets (best-effort; may not fire on some platforms/voices).
+      tts.setProgressHandler((String text, int start, int end, String word) {
+        _progressListener?.call(
+          TtsProgress(text: text, start: start, end: end, word: word),
+        );
       });
 
       // Configure defaults that are safe.
@@ -243,6 +257,7 @@ class FlutterTtsService implements TtsService {
   Future<void> dispose() async {
     await stop();
     _tts = null;
+    _progressListener = null;
     _speaking.dispose();
   }
 }

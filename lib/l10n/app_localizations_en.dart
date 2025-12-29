@@ -33,6 +33,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get heroDog => 'Dog';
 
   @override
+  String get heroBoy => 'Boy';
+
+  @override
+  String get heroGirl => 'Girl';
+
+  @override
   String get generate => 'Generate';
 
   @override
@@ -238,7 +244,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get locationRandom => 'Random';
 
   @override
+  String get randomLocationLabel => 'Random location';
+
+  @override
   String get storyType => 'Story Type';
+
+  @override
+  String get randomStyleLabel => 'Random style';
 
   @override
   String get typeFriendly => 'Friendly';
@@ -263,6 +275,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceInput => 'Voice input';
+
+  @override
+  String get ttsSystemLabel => 'TTS: system';
+
+  @override
+  String get childNameLabel => 'Child name';
+
+  @override
+  String get childNameHint => 'Optional';
+
+  @override
+  String get heroNameLabel => 'Hero name';
+
+  @override
+  String get heroNameHint => 'Optional';
+
+  @override
+  String get heroNameHelper =>
+      'If set, the story will use this name for the main hero.';
 
   @override
   String get voiceHelpTitle => 'Voice input help';
@@ -315,6 +346,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get generateRequestMVP => 'Generate request (MVP)';
+
+  @override
+  String get generating => 'Generating…';
+
+  @override
+  String get generationFailedTitle => 'Generation failed';
+
+  @override
+  String get sttNoResults => 'Speech recognition produced no results';
 
   @override
   String get ok => 'OK';
