@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -35,6 +37,8 @@ class StoryReaderPage extends StatelessWidget {
               imageGenerationService: ctx.read(),
               interactiveStoriesEnabled: settings.interactiveStoriesEnabled,
               autoIllustrationsEnabled: settings.autoIllustrations,
+              devIllustrationFallbackEnabled:
+                  settings.devIllustrationFallbackEnabled,
             )..startStory(args: a);
           },
         ),
@@ -414,14 +418,14 @@ class _NarrationPanel extends StatelessWidget {
                           }
                         },
                   icon: Icon(isPaused ? Icons.play_arrow : Icons.volume_up),
-                  label: Text(isPaused ? 'Resume' : l10n.readAloud),
+                  label: Text(isPaused ? l10n.resume : l10n.readAloud),
                 ),
                 OutlinedButton.icon(
                   onPressed: (narrationEnabled && isSpeaking)
                       ? narration.pauseNarration
                       : null,
                   icon: const Icon(Icons.pause),
-                  label: const Text('Pause'),
+                  label: Text(l10n.pause),
                 ),
                 OutlinedButton.icon(
                   onPressed: (isSpeaking || isPaused)
@@ -466,7 +470,7 @@ class _NarrationPanel extends StatelessWidget {
                                         8,
                                       ),
                                       child: Text(
-                                        'Start from…',
+                                        l10n.startFrom,
                                         style: theme.textTheme.titleMedium
                                             ?.copyWith(
                                               fontWeight: FontWeight.w700,
@@ -509,14 +513,14 @@ class _NarrationPanel extends StatelessWidget {
                           );
                         },
                   icon: const Icon(Icons.format_list_bulleted),
-                  label: const Text('Start from…'),
+                  label: Text(l10n.startFrom),
                 ),
               ],
             ),
             if (!narrationEnabled) ...[
               const SizedBox(height: 10),
               Text(
-                'Включите Voice narration в Settings',
+                l10n.enableVoiceNarrationInSettings,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -542,6 +546,7 @@ class _ImagePanel extends StatelessWidget {
 
     final status = story.illustrationStatus;
     final url = story.illustrationUrl;
+    final bytes = story.illustrationBytes;
 
     if (status == IllustrationStatus.idle) {
       // Spec: do not show any placeholder before generation begins.
@@ -571,7 +576,23 @@ class _ImagePanel extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: _IllustrationImage(source: url),
+                child: bytes != null && bytes.isNotEmpty
+                    ? ColoredBox(
+                        color: Colors.black12,
+                        child: Image.memory(
+                          bytes,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const ColoredBox(
+                                color: Colors.black12,
+                                child: Center(
+                                  child: Icon(Icons.broken_image_outlined),
+                                ),
+                              ),
+                        ),
+                      )
+                    : _IllustrationImage(source: url),
               ),
             ),
             const SizedBox(height: 10),
@@ -583,10 +604,10 @@ class _ImagePanel extends StatelessWidget {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(const SnackBar(content: Text('Saved.')));
+                  ).showSnackBar(SnackBar(content: Text(l10n.saved)));
                 },
                 icon: const Icon(Icons.bookmark_add_outlined),
-                label: const Text('Save image'),
+                label: Text(l10n.saveImage),
               ),
             ),
           ],
@@ -597,6 +618,39 @@ class _ImagePanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(l10n.illustration, style: theme.textTheme.titleMedium),
+            if (bytes != null && bytes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: ColoredBox(
+                    color: Colors.black12,
+                    child: Image.memory(
+                      bytes,
+                      fit: BoxFit.cover,
+                      gaplessPlayback: true,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const ColoredBox(
+                            color: Colors.black12,
+                            child: Center(
+                              child: Icon(Icons.broken_image_outlined),
+                            ),
+                          ),
+                    ),
+                  ),
+                ),
+              ),
+            ] else if (url != null && url.trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: _IllustrationImage(source: url),
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             Text(l10n.tryAgain),
             const SizedBox(height: 8),
@@ -630,11 +684,30 @@ class _IllustrationImage extends StatelessWidget {
   bool _isHttpUrl(String s) =>
       s.startsWith('http://') || s.startsWith('https://');
   bool _isGsUrl(String s) => s.startsWith('gs://');
+  bool _isDataUrl(String s) => s.startsWith('data:');
+
+  Uint8List? _tryDecodeDataImage(String s) {
+    try {
+      final v = s.trim();
+      if (!v.startsWith('data:')) return null;
+
+      // Expected shape: data:image/png;base64,AAAA...
+      final comma = v.indexOf(',');
+      if (comma < 0) return null;
+      final meta = v.substring(0, comma);
+      final payload = v.substring(comma + 1);
+      if (!meta.contains('base64')) return null;
+      return base64Decode(payload);
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<String> _resolve(String s) async {
     final v = s.trim();
     if (v.isEmpty) return '';
     if (_isHttpUrl(v)) return v;
+    if (_isDataUrl(v)) return v;
 
     final storage = FirebaseStorage.instance;
     if (_isGsUrl(v)) {
@@ -652,6 +725,45 @@ class _IllustrationImage extends StatelessWidget {
       return const ColoredBox(
         color: Colors.black12,
         child: Center(child: Icon(Icons.image_not_supported_outlined)),
+      );
+    }
+
+    if (_isDataUrl(s)) {
+      final bytes = _tryDecodeDataImage(s);
+      if (bytes == null || bytes.isEmpty) {
+        return ColoredBox(
+          color: Colors.black12,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.broken_image_outlined),
+                  const SizedBox(height: 8),
+                  Text(
+                    AppLocalizations.of(context)!.failedToLoadImage,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      return ColoredBox(
+        color: Colors.black12,
+        child: Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (context, error, stackTrace) => const ColoredBox(
+            color: Colors.black12,
+            child: Center(child: Icon(Icons.broken_image_outlined)),
+          ),
+        ),
       );
     }
 
@@ -674,7 +786,7 @@ class _IllustrationImage extends StatelessWidget {
                     const Icon(Icons.broken_image_outlined),
                     const SizedBox(height: 8),
                     Text(
-                      'Failed to load image',
+                      AppLocalizations.of(context)!.failedToLoadImage,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
@@ -745,8 +857,8 @@ class _SpeakStopButtons extends StatelessWidget {
       children: [
         IconButton(
           tooltip: isSpeaking
-              ? 'Pause'
-              : (isPaused ? 'Continue' : l10n.readAloud),
+              ? l10n.pause
+              : (isPaused ? l10n.resume : l10n.readAloud),
           onPressed: isSpeaking
               ? narration.pauseNarration
               : (isPaused ? resume : start),

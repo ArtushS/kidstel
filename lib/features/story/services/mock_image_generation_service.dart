@@ -5,7 +5,9 @@ import 'image_generation_service.dart';
 
 class MockImageGenerationService implements ImageGenerationService {
   @override
-  Future<String> generateImage({required StoryState story}) async {
+  Future<GeneratedImageResult> generateImage({
+    required StoryState story,
+  }) async {
     // Simulate background generation.
     await Future<void>.delayed(const Duration(seconds: 2));
 
@@ -16,6 +18,6 @@ class MockImageGenerationService implements ImageGenerationService {
       throw Exception('Illustration is unavailable right now.');
     }
 
-    return url;
+    return GeneratedImageResult(url: url.trim());
   }
 }

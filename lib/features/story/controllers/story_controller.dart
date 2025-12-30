@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 
@@ -19,6 +20,45 @@ class StoryController extends ChangeNotifier {
 
   final bool _interactiveStoriesEnabled;
   final bool _autoIllustrationsEnabled;
+  final bool _devIllustrationFallbackEnabled;
+
+  /// DEV/TEST fallback illustration bytes.
+  ///
+  /// Must be visually non-empty so the reader UI never shows an "empty" box
+  /// when illustration generation fails.
+  static Future<Uint8List> _buildDevFallbackBytes() async {
+    // Keep a 16:9 image so it fits our illustration panel without distortion.
+    const w = 640;
+    const h = 360;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    final rect = ui.Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble());
+
+    // Background.
+    final bg = ui.Paint()..color = const ui.Color(0xFFECEFF1);
+    canvas.drawRect(rect, bg);
+
+    // Border.
+    final border = ui.Paint()
+      ..color = const ui.Color(0xFF90A4AE)
+      ..style = ui.PaintingStyle.stroke
+      ..strokeWidth = 12;
+    canvas.drawRect(rect.deflate(6), border);
+
+    // Diagonal cross.
+    final cross = ui.Paint()
+      ..color = const ui.Color(0xFFB0BEC5)
+      ..style = ui.PaintingStyle.stroke
+      ..strokeWidth = 10;
+    canvas.drawLine(const ui.Offset(40, 40), ui.Offset(w - 40, h - 40), cross);
+    canvas.drawLine(ui.Offset(w - 40, 40), ui.Offset(40, h - 40), cross);
+
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(w, h);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return bytes?.buffer.asUint8List() ?? Uint8List(0);
+  }
 
   static const int _maxInteractiveSteps = 3;
 
@@ -39,11 +79,35 @@ class StoryController extends ChangeNotifier {
     required ImageGenerationService imageGenerationService,
     bool interactiveStoriesEnabled = true,
     bool autoIllustrationsEnabled = true,
+    bool devIllustrationFallbackEnabled = kDebugMode,
   }) : _storyService = storyService,
        _repository = repository,
        _imageGeneration = imageGenerationService,
        _interactiveStoriesEnabled = interactiveStoriesEnabled,
-       _autoIllustrationsEnabled = autoIllustrationsEnabled;
+       _autoIllustrationsEnabled = autoIllustrationsEnabled,
+       _devIllustrationFallbackEnabled = devIllustrationFallbackEnabled;
+
+  void _imgLog(
+    String message, {
+    Map<String, Object?>? data,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    if (!kDebugMode) return;
+    final b = StringBuffer('[IMG] $message');
+    if (data != null && data.isNotEmpty) {
+      for (final e in data.entries) {
+        b.write(' ${e.key}=${e.value}');
+      }
+    }
+    debugPrint(b.toString());
+    if (error != null) {
+      debugPrint('[IMG] error=$error');
+    }
+    if (stackTrace != null) {
+      debugPrint(stackTrace.toString());
+    }
+  }
 
   DateTime _now() => DateTime.now().toUtc();
 
@@ -448,14 +512,27 @@ class StoryController extends ChangeNotifier {
   ///
   /// This should typically be triggered automatically after reading begins.
   Future<void> generateIllustration({bool force = false}) async {
-    if (!_autoIllustrationsEnabled) return;
-    if (!_session.imageEnabled) return;
-    if (_state.chapters.isEmpty) return;
+    if (!_autoIllustrationsEnabled) {
+      _imgLog('skip: auto illustrations disabled');
+      return;
+    }
+    if (!_session.imageEnabled) {
+      _imgLog('skip: session image disabled');
+      return;
+    }
+    if (_state.chapters.isEmpty) {
+      _imgLog('skip: no chapters');
+      return;
+    }
 
     final status = _state.illustrationStatus;
     if (!force &&
         (status == IllustrationStatus.loading ||
             status == IllustrationStatus.ready)) {
+      _imgLog(
+        'skip: already in progress/ready',
+        data: {'force': force, 'status': status.name},
+      );
       return;
     }
 
@@ -463,10 +540,22 @@ class StoryController extends ChangeNotifier {
     final existingUrl = last.imageUrl;
     final prompt = _buildIllustrationPrompt(last);
 
-    if (existingUrl != null && existingUrl.trim().isNotEmpty) {
+    _imgLog(
+      'start',
+      data: {
+        'force': force,
+        'storyId': _state.storyId,
+        'chapterIndex': last.chapterIndex,
+        'promptLen': prompt.length,
+        'hasExistingUrl': (existingUrl ?? '').trim().isNotEmpty,
+      },
+    );
+
+    if (!force && existingUrl != null && existingUrl.trim().isNotEmpty) {
+      final v = existingUrl.trim();
       _state = _state.copyWith(
         illustrationStatus: IllustrationStatus.ready,
-        illustrationUrl: existingUrl,
+        illustrationUrl: v,
         illustrationPrompt: prompt,
         lastUpdated: _now(),
       );
@@ -477,41 +566,102 @@ class StoryController extends ChangeNotifier {
     _state = _state.copyWith(
       illustrationStatus: IllustrationStatus.loading,
       illustrationUrl: null,
+      illustrationBytes: null,
       illustrationPrompt: prompt,
       lastUpdated: _now(),
     );
     notifyListeners();
 
     try {
-      final url = await _imageGeneration.generateImage(story: _state);
+      final result = await _imageGeneration.generateImage(story: _state);
+
+      final url = (result.url ?? '').trim();
+      final bytes = result.bytes;
+
+      _imgLog(
+        'success',
+        data: {
+          'chapterIndex': last.chapterIndex,
+          'hasUrl': url.isNotEmpty,
+          'bytesLen': bytes?.length ?? 0,
+          if (url.isNotEmpty)
+            'urlPrefix': url.substring(0, url.length.clamp(0, 32)),
+        },
+      );
+
+      if (bytes != null && bytes.isNotEmpty) {
+        _state = _state.copyWith(
+          illustrationStatus: IllustrationStatus.ready,
+          illustrationUrl: null,
+          illustrationBytes: bytes,
+          lastUpdated: _now(),
+        );
+        notifyListeners();
+        return;
+      }
+
+      if (url.isEmpty) {
+        throw FormatException(
+          'Image generation returned neither url nor bytes',
+        );
+      }
 
       // Persist URL into the last chapter (for restore).
       final chapters = [..._state.chapters];
-      final last = chapters.last;
+      final lastChapter = chapters.last;
       chapters[chapters.length - 1] = StoryChapter(
-        chapterIndex: last.chapterIndex,
-        title: last.title,
-        text: last.text,
-        progress: last.progress,
+        chapterIndex: lastChapter.chapterIndex,
+        title: lastChapter.title,
+        text: lastChapter.text,
+        progress: lastChapter.progress,
         imageUrl: url,
-        choices: last.choices,
+        choices: lastChapter.choices,
       );
 
       _state = _state.copyWith(
         chapters: chapters,
         illustrationStatus: IllustrationStatus.ready,
         illustrationUrl: url,
+        illustrationBytes: null,
         lastUpdated: _now(),
       );
       notifyListeners();
 
       // Persist updated story with the illustration.
       unawaited(saveToLibrary());
-    } catch (e) {
-      debugPrint('Illustration generation failed: $e');
+    } catch (e, st) {
+      _imgLog(
+        'failure',
+        data: {
+          'storyId': _state.storyId,
+          'chapterIndex': last.chapterIndex,
+          'fallbackEnabled': _devIllustrationFallbackEnabled,
+        },
+        error: e,
+        stackTrace: st,
+      );
+
+      if (_devIllustrationFallbackEnabled) {
+        final bytes = await _buildDevFallbackBytes();
+
+        // Keep status=error so the user still has a visible "Try again" action,
+        // while we still show a deterministic image in DEV/TEST.
+        _state = _state.copyWith(
+          illustrationStatus: IllustrationStatus.error,
+          illustrationUrl: null,
+          illustrationBytes: bytes,
+          lastUpdated: _now(),
+        );
+        notifyListeners();
+
+        unawaited(saveToLibrary());
+        return;
+      }
+
       _state = _state.copyWith(
         illustrationStatus: IllustrationStatus.error,
         illustrationUrl: null,
+        illustrationBytes: null,
         lastUpdated: _now(),
       );
       notifyListeners();

@@ -3,6 +3,8 @@ import 'story_choice.dart';
 import 'story_image_state.dart';
 import 'story_session.dart';
 
+import 'dart:typed_data';
+
 enum IllustrationStatus { idle, loading, ready, error }
 
 IllustrationStatus _illustrationStatusFromJson(Object? value) {
@@ -47,6 +49,11 @@ class StoryState {
   /// URL to show when [illustrationStatus] is [IllustrationStatus.ready].
   final String? illustrationUrl;
 
+  /// Runtime-only bytes for the current illustration.
+  ///
+  /// Not persisted; used when the agent returns base64 rather than a URL.
+  final Uint8List? illustrationBytes;
+
   /// Prompt used to generate the current illustration (optional; for debugging).
   final String? illustrationPrompt;
 
@@ -68,6 +75,7 @@ class StoryState {
     required this.currentChoices,
     required this.illustrationStatus,
     required this.illustrationUrl,
+    required this.illustrationBytes,
     required this.illustrationPrompt,
     required this.isFinished,
     required this.lastUpdated,
@@ -86,6 +94,7 @@ class StoryState {
       currentChoices: <StoryChoice>[],
       illustrationStatus: IllustrationStatus.idle,
       illustrationUrl: null,
+      illustrationBytes: null,
       illustrationPrompt: null,
       isFinished: false,
       lastUpdated: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
@@ -104,6 +113,7 @@ class StoryState {
     List<StoryChoice>? currentChoices,
     IllustrationStatus? illustrationStatus,
     String? illustrationUrl,
+    Uint8List? illustrationBytes,
     String? illustrationPrompt,
     bool? isFinished,
     DateTime? lastUpdated,
@@ -121,6 +131,7 @@ class StoryState {
       currentChoices: currentChoices ?? this.currentChoices,
       illustrationStatus: illustrationStatus ?? this.illustrationStatus,
       illustrationUrl: illustrationUrl ?? this.illustrationUrl,
+      illustrationBytes: illustrationBytes ?? this.illustrationBytes,
       illustrationPrompt: illustrationPrompt ?? this.illustrationPrompt,
       isFinished: isFinished ?? this.isFinished,
       lastUpdated: lastUpdated ?? this.lastUpdated,
@@ -180,6 +191,8 @@ class StoryState {
       illustrationStatus: status,
       illustrationUrl:
           (json['illustrationUrl'] as String?) ?? legacyImageState?.url,
+      // Runtime-only field is not persisted.
+      illustrationBytes: null,
       illustrationPrompt: json['illustrationPrompt'] as String?,
       isFinished: (json['isFinished'] ?? false) as bool,
       lastUpdated:

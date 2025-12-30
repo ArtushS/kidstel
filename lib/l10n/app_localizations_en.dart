@@ -397,10 +397,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readAloud => 'Read';
 
   @override
+  String get pause => 'Pause';
+
+  @override
+  String get resume => 'Resume';
+
+  @override
+  String get startFrom => 'Start from…';
+
+  @override
   String get stopReading => 'Stop';
 
   @override
   String get illustration => 'Illustration';
+
+  @override
+  String get saveImage => 'Save image';
+
+  @override
+  String get saved => 'Saved.';
+
+  @override
+  String get failedToLoadImage => 'Failed to load image';
+
+  @override
+  String get enableVoiceNarrationInSettings =>
+      'Enable Voice narration in Settings';
 
   @override
   String get generateImage => 'Generate image';

@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // User private data: strict per-uid isolation.
+    match /users/{uid}/{document=**} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // Catalog / setup collections: read-only (DEV unblock).
+    match /heroes/{docId} {
+      allow read: if true;
+    }
+
+    match /locations/{docId} {
+      allow read: if true;
+    }
+
+    match /styles/{docId} {
+      allow read: if true;
+    }
+
+    match /types/{docId} {
+      allow read: if true;
+    }
+
+    // Nested setup catalogs.
+    // Shape: story_setup / v1 / <subcollection> / <doc> (and any deeper docs).
+    match /story_setup/v1/{document=**} {
+      allow read: if true;
+    }
+
+    // Shape: catalog / story_setup / <subcollection> / <doc> (and any deeper docs).
+    match /catalog/story_setup/{document=**} {
+      allow read: if true;
+    }
+
+    // Everything else remains denied by default.
+  }
+}

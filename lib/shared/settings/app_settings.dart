@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -115,6 +116,12 @@ class AppSettings {
   final bool requireParentConfirmation;
 
   final bool autoIllustrations;
+
+  /// DEV/TEST-only behavior: when enabled, illustration generation failures
+  /// should fall back to a deterministic placeholder image.
+  ///
+  /// Default: enabled in debug builds.
+  final bool devIllustrationFallbackEnabled;
   final bool interactiveStoriesEnabled;
   final CreativityLevel creativityLevel;
   final bool rememberPreferences;
@@ -140,6 +147,7 @@ class AppSettings {
     required this.disableScaryContent,
     required this.requireParentConfirmation,
     required this.autoIllustrations,
+    required this.devIllustrationFallbackEnabled,
     required this.interactiveStoriesEnabled,
     required this.creativityLevel,
     required this.rememberPreferences,
@@ -174,7 +182,7 @@ class AppSettings {
     return jsonEncode({'name': name, 'locale': locale});
   }
 
-  factory AppSettings.defaults() => const AppSettings(
+  factory AppSettings.defaults() => AppSettings(
     themeMode: ThemeMode.system,
     fontScale: FontScale.medium,
     animationsEnabled: true,
@@ -195,6 +203,10 @@ class AppSettings {
     disableScaryContent: true,
     requireParentConfirmation: true,
     autoIllustrations: true,
+    devIllustrationFallbackEnabled: const bool.fromEnvironment(
+      'DEV_ILLUSTRATION_FALLBACK',
+      defaultValue: kDebugMode,
+    ),
     interactiveStoriesEnabled: true,
     creativityLevel: CreativityLevel.normal,
     rememberPreferences: true,
@@ -221,6 +233,7 @@ class AppSettings {
     bool? disableScaryContent,
     bool? requireParentConfirmation,
     bool? autoIllustrations,
+    bool? devIllustrationFallbackEnabled,
     bool? interactiveStoriesEnabled,
     CreativityLevel? creativityLevel,
     bool? rememberPreferences,
@@ -249,6 +262,8 @@ class AppSettings {
       requireParentConfirmation:
           requireParentConfirmation ?? this.requireParentConfirmation,
       autoIllustrations: autoIllustrations ?? this.autoIllustrations,
+      devIllustrationFallbackEnabled:
+          devIllustrationFallbackEnabled ?? this.devIllustrationFallbackEnabled,
       interactiveStoriesEnabled:
           interactiveStoriesEnabled ?? this.interactiveStoriesEnabled,
       creativityLevel: creativityLevel ?? this.creativityLevel,
@@ -277,6 +292,7 @@ class AppSettings {
     'disableScaryContent': disableScaryContent,
     'requireParentConfirmation': requireParentConfirmation,
     'autoIllustrations': autoIllustrations,
+    'devIllustrationFallbackEnabled': devIllustrationFallbackEnabled,
     'interactiveStoriesEnabled': interactiveStoriesEnabled,
     'creativityLevel': creativityLevel.name,
     'rememberPreferences': rememberPreferences,
@@ -347,6 +363,13 @@ class AppSettings {
       requireParentConfirmation:
           (json['requireParentConfirmation'] ?? true) as bool,
       autoIllustrations: (json['autoIllustrations'] ?? true) as bool,
+      devIllustrationFallbackEnabled:
+          (json['devIllustrationFallbackEnabled'] ??
+                  const bool.fromEnvironment(
+                    'DEV_ILLUSTRATION_FALLBACK',
+                    defaultValue: kDebugMode,
+                  ))
+              as bool,
       interactiveStoriesEnabled:
           (json['interactiveStoriesEnabled'] ?? true) as bool,
       creativityLevel: _enumByNameOr(

@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // User-scoped files (private per-uid).
+    match /users/{uid}/{allPaths=**} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // App/catalog assets that must be readable to render UI (DEV unblock).
+    // Keep write denied.
+    match /catalog/{allPaths=**} {
+      allow read: if true;
+    }
+
+    match /story_setup/{allPaths=**} {
+      allow read: if true;
+    }
+
+    match /icons/{allPaths=**} {
+      allow read: if true;
+    }
+
+    match /public/{allPaths=**} {
+      allow read: if true;
+    }
+
+    // Single final catch-all (no global open access).
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

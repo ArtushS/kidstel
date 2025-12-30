@@ -862,6 +862,24 @@ abstract class AppLocalizations {
   /// **'Read'**
   String get readAloud;
 
+  /// No description provided for @pause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get pause;
+
+  /// No description provided for @resume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get resume;
+
+  /// No description provided for @startFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Start from…'**
+  String get startFrom;
+
   /// No description provided for @stopReading.
   ///
   /// In en, this message translates to:
@@ -873,6 +891,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Illustration'**
   String get illustration;
+
+  /// No description provided for @saveImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Save image'**
+  String get saveImage;
+
+  /// No description provided for @saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved.'**
+  String get saved;
+
+  /// No description provided for @failedToLoadImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load image'**
+  String get failedToLoadImage;
+
+  /// No description provided for @enableVoiceNarrationInSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Voice narration in Settings'**
+  String get enableVoiceNarrationInSettings;
 
   /// No description provided for @generateImage.
   ///

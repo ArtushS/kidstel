@@ -398,10 +398,32 @@ class AppLocalizationsHy extends AppLocalizations {
   String get readAloud => 'Կարդալ';
 
   @override
+  String get pause => 'Դադար';
+
+  @override
+  String get resume => 'Շարունակել';
+
+  @override
+  String get startFrom => 'Սկսել այստեղից…';
+
+  @override
   String get stopReading => 'Կանգնեցնել';
 
   @override
   String get illustration => 'Նկարազարդում';
+
+  @override
+  String get saveImage => 'Պահել պատկերը';
+
+  @override
+  String get saved => 'Պահված է։';
+
+  @override
+  String get failedToLoadImage => 'Չհաջողվեց բեռնել պատկերը';
+
+  @override
+  String get enableVoiceNarrationInSettings =>
+      'Միացրու ձայնային ընթերցումը Կարգավորումներում';
 
   @override
   String get generateImage => 'Ստեղծել պատկեր';

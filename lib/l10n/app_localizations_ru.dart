@@ -397,10 +397,31 @@ class AppLocalizationsRu extends AppLocalizations {
   String get readAloud => 'Читать';
 
   @override
+  String get pause => 'Пауза';
+
+  @override
+  String get resume => 'Продолжить';
+
+  @override
+  String get startFrom => 'Начать с…';
+
+  @override
   String get stopReading => 'Стоп';
 
   @override
   String get illustration => 'Иллюстрация';
+
+  @override
+  String get saveImage => 'Сохранить изображение';
+
+  @override
+  String get saved => 'Сохранено.';
+
+  @override
+  String get failedToLoadImage => 'Не удалось загрузить изображение';
+
+  @override
+  String get enableVoiceNarrationInSettings => 'Включите озвучку в Настройках';
 
   @override
   String get generateImage => 'Сгенерировать изображение';

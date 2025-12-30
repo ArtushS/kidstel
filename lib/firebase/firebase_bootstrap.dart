@@ -32,8 +32,19 @@ class FirebaseBootstrap {
     // Avoid crashing on unsupported platforms.
     if (!kIsWeb && Platform.isAndroid) {
       try {
+        if (kDebugMode) {
+          debugPrint('[AppCheck] Android provider = debug');
+        }
         await FirebaseAppCheck.instance.activate(
-          androidProvider: AndroidProvider.debug,
+          // Provide both the new provider classes and the legacy enum in debug
+          // builds to maximize compatibility across plugin/native versions.
+          // ignore: deprecated_member_use
+          androidProvider: kDebugMode
+              ? AndroidProvider.debug
+              : AndroidProvider.playIntegrity,
+          providerAndroid: kDebugMode
+              ? const AndroidDebugProvider()
+              : const AndroidPlayIntegrityProvider(),
         );
       } catch (e) {
         debugPrint('FirebaseAppCheck.activate failed: $e');
