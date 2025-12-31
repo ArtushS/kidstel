@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -470,6 +471,19 @@ class SettingsPage extends StatelessWidget {
                 ),
               ],
             ),
+
+            if (kDebugMode)
+              SettingsSection(
+                title: 'Debug',
+                children: [
+                  SettingsTile(
+                    leading: const Icon(Icons.bug_report_outlined),
+                    title: 'Firebase sanity check',
+                    subtitle: 'Auth / Firestore / Storage quick test',
+                    onTap: () => context.push('/debug-firebase'),
+                  ),
+                ],
+              ),
 
             const SizedBox(height: 24),
           ],

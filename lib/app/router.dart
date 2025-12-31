@@ -17,6 +17,7 @@ import '../features/story_setup/story_setup_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/settings/voice_help_page.dart';
 import '../features/my_stories/my_stories_page.dart';
+import '../features/debug/firebase_sanity_page.dart';
 import '../shared/models/story_setup.dart';
 import '../features/story_reader/story_reader_args.dart';
 import '../features/story_reader/story_reader_page.dart';
@@ -33,7 +34,7 @@ GoRouter buildRouter({required AuthController auth}) {
       '/reset-sent',
     };
 
-    final isAuthRoute = authRoutes.contains(loc);
+    final isAuthFlowRoute = loc != '/auth' && authRoutes.contains(loc);
     final status = auth.state.status;
 
     if (status == AuthStatus.unknown || status == AuthStatus.loading) {
@@ -41,17 +42,13 @@ GoRouter buildRouter({required AuthController auth}) {
     }
 
     if (status == AuthStatus.unauthenticated) {
-      if (auth.devBypass) {
-        // DEV: auto anonymous sign-in happens in controller.
-        return loc == '/auth' ? null : '/auth';
-      }
       // PROD: allow only auth flow routes.
-      return isAuthRoute ? null : '/login';
+      return isAuthFlowRoute ? null : '/login';
     }
 
     if (status == AuthStatus.authenticated) {
       // Keep authenticated users out of auth flow.
-      return isAuthRoute || loc == '/auth' ? '/' : null;
+      return isAuthFlowRoute || loc == '/auth' ? '/' : null;
     }
 
     return null;
@@ -118,6 +115,11 @@ GoRouter buildRouter({required AuthController auth}) {
         path: '/settings',
         pageBuilder: (context, state) =>
             const MaterialPage(child: SettingsPage()),
+      ),
+      GoRoute(
+        path: '/debug-firebase',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: FirebaseSanityPage()),
       ),
       GoRoute(
         path: '/voice-help',

@@ -16,7 +16,6 @@ class AuthController extends ChangeNotifier {
 
   StreamSubscription<AuthUser?>? _sub;
   bool _bootstrapped = false;
-  bool _autoSignInAttempted = false;
 
   AuthController({required AuthService service, required this.devBypass})
     : _service = service;
@@ -30,6 +29,9 @@ class AuthController extends ChangeNotifier {
 
     _sub = _service.authStateChanges().listen(
       (user) async {
+        debugPrint(
+          '[AUTH] stateChange user=${user?.uid} email=${user?.email} anon=${user?.isAnonymous}',
+        );
         if (user == null) {
           _state = _state.copyWith(
             status: AuthStatus.unauthenticated,
@@ -37,11 +39,6 @@ class AuthController extends ChangeNotifier {
             clearFailure: true,
           );
           notifyListeners();
-
-          if (devBypass && !_autoSignInAttempted) {
-            _autoSignInAttempted = true;
-            await signInAnonymously();
-          }
 
           return;
         }

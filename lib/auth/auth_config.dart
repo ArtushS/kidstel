@@ -7,5 +7,5 @@
 const bool _kIsReleaseMode = bool.fromEnvironment('dart.vm.product');
 
 const bool kDevBypassAuth =
-    bool.fromEnvironment('DEV_BYPASS_AUTH', defaultValue: true) &&
+    bool.fromEnvironment('DEV_BYPASS_AUTH', defaultValue: false) &&
     !_kIsReleaseMode;

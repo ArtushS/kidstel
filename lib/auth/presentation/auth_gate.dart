@@ -13,8 +13,6 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  bool _started = false;
-
   @override
   void initState() {
     super.initState();
@@ -22,7 +20,6 @@ class _AuthGateState extends State<AuthGate> {
       if (!mounted) return;
       final auth = context.read<AuthController>();
       auth.bootstrap();
-      setState(() => _started = true);
     });
   }
 
@@ -39,31 +36,6 @@ class _AuthGateState extends State<AuthGate> {
         }
 
         if (s.status == AuthStatus.unauthenticated) {
-          if (c.devBypass) {
-            // Redirect will keep us on /auth until bypass signs in.
-            return Scaffold(
-              body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 16),
-                      Text(
-                        _started
-                            ? 'Signing you in for development…'
-                            : 'Starting…',
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }
-
-          // In PROD we show auth flow.
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             final loc = GoRouterState.of(context).uri.path;

@@ -21,12 +21,12 @@ class HomePage extends StatelessWidget {
           IconButton(
             tooltip: 'Account',
             icon: const Icon(Icons.account_circle_outlined),
-            onPressed: () => context.go('/account'),
+            onPressed: () => context.push('/account'),
           ),
           IconButton(
             tooltip: t.settings,
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.go('/settings'),
+            onPressed: () => context.push('/settings'),
           ),
         ],
       ),
