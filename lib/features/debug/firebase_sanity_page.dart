@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
+const String _storageBucket = 'gs://kids-tell-d0ks8m.firebasestorage.app';
+
 class FirebaseSanityPage extends StatefulWidget {
   const FirebaseSanityPage({super.key});
 
@@ -53,6 +55,55 @@ class _FirebaseSanityPageState extends State<FirebaseSanityPage> {
         .doc(uid)
         .collection('debug')
         .doc('ping');
+  }
+
+  Future<String> _listFolder(String gsFolderUrl) async {
+    final ref = FirebaseStorage.instance.refFromURL(gsFolderUrl);
+    final res = await ref.listAll();
+
+    final items = res.items.map((e) => e.fullPath).toList(growable: false)
+      ..sort();
+    final prefixes = res.prefixes.map((e) => e.fullPath).toList(growable: false)
+      ..sort();
+
+    return 'OK: listed $gsFolderUrl\n'
+        'prefixes(${prefixes.length}):\n${prefixes.join('\n')}\n\n'
+        'items(${items.length}):\n${items.join('\n')}';
+  }
+
+  Future<String> _checkIconGsUrls(List<String> gsUrls) async {
+    final storage = FirebaseStorage.instance;
+    final ok = <String>[];
+    final missing = <String>[];
+    final otherErr = <String>[];
+
+    for (final gs in gsUrls) {
+      try {
+        final url = await storage.refFromURL(gs).getDownloadURL();
+        ok.add('$gs -> $url');
+      } on FirebaseException catch (e) {
+        final code = (e.code).toLowerCase();
+        if (code.contains('object-not-found') || code.contains('not-found')) {
+          missing.add('$gs -> ${e.code}');
+        } else {
+          otherErr.add('$gs -> ${e.code}: ${e.message ?? ''}');
+        }
+      } catch (e) {
+        otherErr.add('$gs -> $e');
+      }
+    }
+
+    ok.sort();
+    missing.sort();
+    otherErr.sort();
+
+    return 'Icon URL check\n'
+        '- ok: ${ok.length}\n'
+        '- missing: ${missing.length}\n'
+        '- other errors: ${otherErr.length}\n\n'
+        'OK:\n${ok.join('\n')}\n\n'
+        'MISSING:\n${missing.join('\n')}\n\n'
+        'OTHER ERRORS:\n${otherErr.join('\n')}';
   }
 
   @override
@@ -120,14 +171,59 @@ class _FirebaseSanityPageState extends State<FirebaseSanityPage> {
             onPressed: _busy
                 ? null
                 : () => _run('GET Storage URL (public icon)', (u) async {
-                    final ref = FirebaseStorage.instance.ref(
-                      'heroes_icons/hero_bear.png',
-                    );
+                    final gs = '$_storageBucket/heroes_icons/bear.png';
+                    final ref = FirebaseStorage.instance.refFromURL(gs);
                     final url = await ref.getDownloadURL();
-                    return 'OK: downloadURL\n$url';
+                    return 'OK: downloadURL\n$gs\n$url';
                   }),
             icon: const Icon(Icons.link_outlined),
             label: const Text('GET Storage URL (public icon)'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _busy
+                ? null
+                : () => _run('LIST Storage folder (heroes_icons)', (u) async {
+                    return _listFolder('$_storageBucket/heroes_icons');
+                  }),
+            icon: const Icon(Icons.folder_open_outlined),
+            label: const Text('LIST Storage folder (heroes_icons)'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _busy
+                ? null
+                : () => _run('CHECK canonical icon gs:// URLs', (u) async {
+                    final urls = <String>[
+                      // heroes
+                      '$_storageBucket/heroes_icons/boy.png',
+                      '$_storageBucket/heroes_icons/girl.png',
+                      '$_storageBucket/heroes_icons/dog.png',
+                      '$_storageBucket/heroes_icons/cat.png',
+                      '$_storageBucket/heroes_icons/bear.png',
+                      '$_storageBucket/heroes_icons/fox.png',
+                      '$_storageBucket/heroes_icons/rabbit.png',
+
+                      // locations
+                      '$_storageBucket/location_icons/forest.png',
+                      '$_storageBucket/location_icons/snow_castle.png',
+                      '$_storageBucket/location_icons/space.png',
+                      '$_storageBucket/location_icons/palace.png',
+
+                      // styles
+                      '$_storageBucket/styl_icons/compas.png',
+                      '$_storageBucket/styl_icons/friendship.png',
+                      '$_storageBucket/styl_icons/funny.png',
+                      '$_storageBucket/styl_icons/magic.png',
+
+                      // other
+                      '$_storageBucket/cms_uploads/dice.png',
+                    ].where((e) => e.trim().isNotEmpty).toList(growable: false);
+
+                    return _checkIconGsUrls(urls);
+                  }),
+            icon: const Icon(Icons.fact_check_outlined),
+            label: const Text('CHECK canonical icon gs:// URLs'),
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(

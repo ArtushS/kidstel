@@ -15,22 +15,25 @@ service firebase.storage {
       allow read, write: if isOwner(uid);
     }
 
-    // App/catalog assets that must be readable to render UI (DEV unblock).
-    // Keep write denied.
-    match /catalog/{allPaths=**} {
-      allow read: if true;
+    // App/catalog icons used by the UI (read-only for authenticated users).
+    match /heroes_icons/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
-    match /story_setup/{allPaths=**} {
-      allow read: if true;
+    match /location_icons/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
-    match /icons/{allPaths=**} {
-      allow read: if true;
+    match /styl_icons/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
-    match /public/{allPaths=**} {
-      allow read: if true;
+    match /cms_uploads/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
     // Single final catch-all (no global open access).

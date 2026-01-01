@@ -2,9 +2,6 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/ui/ui_constants.dart';
@@ -13,6 +10,9 @@ import '../../shared/voice/open_system_settings.dart';
 
 import '../../shared/settings/settings_scope.dart';
 import '../../shared/models/story_setup.dart';
+import '../../shared/models/story_setup_catalog_item.dart';
+import '../../shared/widgets/network_icon.dart';
+import '../../services/story_setup_catalog_repository.dart';
 import '../story/services/story_service.dart';
 import '../story/services/models/generate_story_response.dart';
 
@@ -24,6 +24,12 @@ class StorySetupPage extends StatefulWidget {
 }
 
 class _StorySetupPageState extends State<StorySetupPage> {
+  // IMPORTANT: must be HTTPS. Replace with your own hosted asset if needed.
+  // This is a public CDN URL (Twemoji). For production, prefer hosting the
+  // dice icon in your own Firebase Storage and using its https download URL.
+  static const String _diceIconUrl =
+      'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3b2.png';
+
   final _ideaCtrl = TextEditingController();
   final _ideaFocus = FocusNode();
 
@@ -36,125 +42,56 @@ class _StorySetupPageState extends State<StorySetupPage> {
 
   bool _isGenerating = false;
 
-  Map<String, String> _heroIconUrlById = const {};
-  Map<String, String> _locationIconUrlById = const {};
-  Map<String, String> _styleIconUrlById = const {};
+  final _catalogRepo = StorySetupCatalogRepository();
 
-  Future<Map<String, String>> _loadIconUrlsFromCollection(
-    CollectionReference<Map<String, dynamic>> col,
-  ) async {
-    final snap = await col.get();
-    final out = <String, String>{};
+  String? _lastCatalogLocaleTag;
 
-    for (final d in snap.docs) {
-      final data = d.data();
-      final raw = (data['iconUrl'] ?? data['icon_url'] ?? '').toString().trim();
-      if (raw.isNotEmpty) {
-        out[d.id] = raw;
-      }
-    }
+  List<StorySetupCatalogItem> _heroCatalog = const <StorySetupCatalogItem>[];
+  List<StorySetupCatalogItem> _locationCatalog =
+      const <StorySetupCatalogItem>[];
+  List<StorySetupCatalogItem> _typeCatalog = const <StorySetupCatalogItem>[];
 
-    return out;
-  }
-
-  Future<Map<String, String>> _tryLoadIconUrls(
-    List<CollectionReference<Map<String, dynamic>>> candidates,
-  ) async {
-    for (final c in candidates) {
-      try {
-        final m = await _loadIconUrlsFromCollection(c);
-        if (m.isNotEmpty) return m;
-      } catch (_) {
-        // Ignore permission/network issues; fall back to next candidate.
-      }
-    }
-    return const {};
-  }
-
-  Future<void> _loadIconUrls() async {
+  Future<void> _loadCatalogs(Locale locale) async {
     try {
-      final db = FirebaseFirestore.instance;
+      if (kDebugMode) {
+        debugPrint(
+          '[StorySetupPage] loading catalogs for locale=${locale.toLanguageTag()}…',
+        );
+      }
 
-      // Try a few common collection layouts. If none exist / no permission,
-      // we fall back to Storage icons.
-      final heroIcons = await _tryLoadIconUrls([
-        db.collection('heroes'),
-        db.collection('story_setup').doc('v1').collection('heroes'),
-        db.collection('catalog').doc('story_setup').collection('heroes'),
-      ]);
+      final heroes = await _catalogRepo.loadHeroes(locale: locale);
+      final locations = await _catalogRepo.loadLocations(locale: locale);
+      final types = await _catalogRepo.loadTypes(locale: locale);
 
-      final locationIcons = await _tryLoadIconUrls([
-        db.collection('locations'),
-        db.collection('story_setup').doc('v1').collection('locations'),
-        db.collection('catalog').doc('story_setup').collection('locations'),
-      ]);
+      if (kDebugMode) {
+        debugPrint(
+          '[StorySetupPage] catalogs loaded: heroes=${heroes.length} locations=${locations.length} types=${types.length}',
+        );
+      }
 
-      final styleIcons = await _tryLoadIconUrls([
-        db.collection('styles'),
-        db.collection('types'),
-        db.collection('story_setup').doc('v1').collection('styles'),
-        db.collection('story_setup').doc('v1').collection('types'),
-        db.collection('catalog').doc('story_setup').collection('styles'),
-        db.collection('catalog').doc('story_setup').collection('types'),
-      ]);
+      if (kDebugMode && heroes.isEmpty && locations.isEmpty && types.isEmpty) {
+        debugPrint(
+          '[StorySetupPage] catalogs are empty in Firestore; using built-in fallback items (Storage paths) so carousels are usable.',
+        );
+      }
 
       if (!mounted) return;
       setState(() {
-        _heroIconUrlById = heroIcons;
-        _locationIconUrlById = locationIcons;
-        _styleIconUrlById = styleIcons;
+        _heroCatalog = heroes;
+        _locationCatalog = locations;
+        _typeCatalog = types;
       });
-    } catch (_) {
-      // Firebase/Firestore may not be available in some runtimes.
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[StorySetupPage] catalog load FAILED: $e');
+      }
     }
   }
 
   Future<void> _warmUpIcons() async {
-    final heroes = _getHeroes(context);
-    final locations = _getLocations(context);
-    final styles = _getTypes(context);
-
-    final directUrls = <String>[
-      ...heroes.map((e) => (e.iconUrl ?? '').trim()).where((e) => e.isNotEmpty),
-      ...locations
-          .map((e) => (e.iconUrl ?? '').trim())
-          .where((e) => e.isNotEmpty),
-      ...styles.map((e) => (e.iconUrl ?? '').trim()).where((e) => e.isNotEmpty),
-    ];
-
-    for (final url in directUrls) {
-      try {
-        if (!mounted) return;
-        await precacheImage(CachedNetworkImageProvider(url), context);
-      } catch (_) {
-        // ignore: invalid urls/network
-      }
-    }
-
-    final paths = <String>[
-      ...heroes
-          .where((e) => (e.iconUrl ?? '').trim().isEmpty)
-          .where((e) => e.storagePath.isNotEmpty)
-          .map((e) => e.storagePath),
-      ...locations
-          .where((e) => (e.iconUrl ?? '').trim().isEmpty)
-          .where((e) => e.storagePath.isNotEmpty)
-          .map((e) => e.storagePath),
-      ...styles
-          .where((e) => (e.iconUrl ?? '').trim().isEmpty)
-          .where((e) => e.storagePath.isNotEmpty)
-          .map((e) => e.storagePath),
-    ];
-
-    for (final p in paths) {
-      try {
-        final url = await FirebaseStorage.instance.ref(p).getDownloadURL();
-        if (!mounted) return;
-        await precacheImage(CachedNetworkImageProvider(url), context);
-      } catch (_) {
-        // ignore: network/config issues
-      }
-    }
+    // Intentionally empty: we avoid eager icon prefetching.
+    // - prevents early Storage reads (403/AppCheck)
+    // - avoids surfacing decode errors during warm-up
   }
 
   VoiceInputController? _voice;
@@ -169,172 +106,190 @@ class _StorySetupPageState extends State<StorySetupPage> {
     final heroName = SettingsScope.of(context).settings.heroName?.trim() ?? '';
     final boyTitle = heroName.isNotEmpty ? heroName : t.heroBoy;
 
-    return [
+    final out = <_PickItem>[
+      _PickItem(id: 'hero_random', title: t.heroRandom, iconUrl: _diceIconUrl),
+    ];
+
+    if (_heroCatalog.isNotEmpty) {
+      out.addAll(
+        _heroCatalog.map(
+          (e) => _PickItem(id: e.id, title: e.name, iconUrl: e.iconUrl),
+        ),
+      );
+      return out;
+    }
+
+    // Built-in fallback (works even when Firestore is not seeded).
+    out.addAll([
       _PickItem(
         id: 'hero_boy',
         title: boyTitle,
-        storagePath: '',
-        iconUrl: _heroIconUrlById['hero_boy'],
-        fallbackIcon: Icons.person_outline,
+        iconUrl: 'heroes_icons/boy.png',
       ),
       _PickItem(
         id: 'hero_girl',
         title: t.heroGirl,
-        storagePath: '',
-        iconUrl: _heroIconUrlById['hero_girl'],
-        fallbackIcon: Icons.person_outline,
+        iconUrl: 'heroes_icons/girl.png',
       ),
       _PickItem(
-        id: 'hero_bear',
-        title: t.heroBear,
-        storagePath: 'heroes_icons/hero_bear.png',
-        iconUrl: _heroIconUrlById['hero_bear'],
-        fallbackIcon: Icons.pets_outlined,
+        id: 'hero_dog',
+        title: t.heroDog,
+        iconUrl: 'heroes_icons/dog.png',
       ),
       _PickItem(
         id: 'hero_cat',
         title: t.heroCat,
-        storagePath: 'heroes_icons/hero_cat.png',
-        iconUrl: _heroIconUrlById['hero_cat'],
-        fallbackIcon: Icons.pets_outlined,
+        iconUrl: 'heroes_icons/cat.png',
+      ),
+      _PickItem(
+        id: 'hero_bear',
+        title: t.heroBear,
+        iconUrl: 'heroes_icons/bear.png',
       ),
       _PickItem(
         id: 'hero_fox',
         title: t.heroFox,
-        storagePath: 'heroes_icons/hero_fox.png',
-        iconUrl: _heroIconUrlById['hero_fox'],
-        fallbackIcon: Icons.pets_outlined,
+        iconUrl: 'heroes_icons/fox.png',
       ),
       _PickItem(
         id: 'hero_rabbit',
         title: t.heroRabbit,
-        storagePath: 'heroes_icons/hero_rabbit.png',
-        iconUrl: _heroIconUrlById['hero_rabbit'],
-        fallbackIcon: Icons.pets_outlined,
+        iconUrl: 'heroes_icons/rabbit.png',
       ),
-      _PickItem(
-        id: 'hero_dice',
-        title: t.heroDice,
-        storagePath: 'heroes_icons/hero_dice.png',
-        iconUrl: _heroIconUrlById['hero_dice'],
-        fallbackIcon: Icons.casino_outlined,
-      ),
-      _PickItem(
-        id: 'hero_random',
-        title: t.heroRandom,
-        storagePath: '',
-        iconUrl: _heroIconUrlById['hero_random'],
-        fallbackIcon: Icons.casino_outlined,
-      ),
-    ];
+    ]);
+
+    return out;
   }
 
   List<_PickItem> _getLocations(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    return [
+
+    final out = <_PickItem>[
       _PickItem(
         id: 'loc_random',
         title: t.randomLocationLabel,
-        storagePath: '',
-        iconUrl: _locationIconUrlById['loc_random'],
-        fallbackIcon: Icons.casino_outlined,
-      ),
-      _PickItem(
-        id: 'castel',
-        title: t.locationCastle,
-        storagePath: 'location_icons/castel.png',
-        iconUrl: _locationIconUrlById['castel'],
-        fallbackIcon: Icons.place_outlined,
-      ),
-      _PickItem(
-        id: 'cozy',
-        title: t.locationCozyCottage,
-        storagePath: 'location_icons/cozy_cottage_nest.png',
-        iconUrl: _locationIconUrlById['cozy'],
-        fallbackIcon: Icons.place_outlined,
-      ),
-      _PickItem(
-        id: 'island',
-        title: t.locationFloatingIsland,
-        storagePath: 'location_icons/floating_island_i.png',
-        iconUrl: _locationIconUrlById['island'],
-        fallbackIcon: Icons.place_outlined,
-      ),
-      _PickItem(
-        id: 'snow_castel',
-        title: t.locationSnowCastle,
-        storagePath: 'location_icons/snhow_castel.png',
-        iconUrl: _locationIconUrlById['snow_castel'],
-        fallbackIcon: Icons.place_outlined,
-      ),
-      _PickItem(
-        id: 'underwater',
-        title: t.locationUnderwater,
-        storagePath: 'location_icons/underwater_kingdom_i.png',
-        iconUrl: _locationIconUrlById['underwater'],
-        fallbackIcon: Icons.place_outlined,
+        iconUrl: _diceIconUrl,
       ),
     ];
+
+    if (_locationCatalog.isNotEmpty) {
+      out.addAll(
+        _locationCatalog.map(
+          (e) => _PickItem(id: e.id, title: e.name, iconUrl: e.iconUrl),
+        ),
+      );
+      return out;
+    }
+
+    // Built-in fallback (best-effort mapping to known Storage icons).
+    out.addAll([
+      _PickItem(
+        id: 'loc_castle',
+        title: t.locationCastle,
+        iconUrl: 'location_icons/palace.png',
+      ),
+      _PickItem(
+        id: 'loc_cozy',
+        title: t.locationCozyCottage,
+        iconUrl: 'location_icons/forest.png',
+      ),
+      _PickItem(
+        id: 'loc_island',
+        title: t.locationFloatingIsland,
+        iconUrl: 'location_icons/space.png',
+      ),
+      _PickItem(
+        id: 'loc_snow_castle',
+        title: t.locationSnowCastle,
+        iconUrl: 'location_icons/snow_castle.png',
+      ),
+      _PickItem(
+        id: 'loc_underwater',
+        title: t.locationUnderwater,
+        iconUrl: 'location_icons/space.png',
+      ),
+    ]);
+
+    return out;
   }
 
   List<_PickItem> _getTypes(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    return [
+
+    final out = <_PickItem>[
       _PickItem(
-        id: 'style_random',
+        id: 'type_random',
+        // No dedicated i18n key for "random type" yet.
         title: t.randomStyleLabel,
-        storagePath: '',
-        iconUrl: _styleIconUrlById['style_random'],
-        fallbackIcon: Icons.casino_outlined,
-      ),
-      _PickItem(
-        id: 'type_1',
-        title: t.typeFriendly,
-        storagePath: '',
-        iconUrl: _styleIconUrlById['type_1'],
-        fallbackIcon: Icons.auto_awesome_outlined,
-      ),
-      _PickItem(
-        id: 'type_2',
-        title: t.typeAdventure,
-        storagePath: '',
-        iconUrl: _styleIconUrlById['type_2'],
-        fallbackIcon: Icons.auto_awesome_outlined,
-      ),
-      _PickItem(
-        id: 'type_3',
-        title: t.typeMagic,
-        storagePath: '',
-        iconUrl: _styleIconUrlById['type_3'],
-        fallbackIcon: Icons.auto_awesome_outlined,
-      ),
-      _PickItem(
-        id: 'type_4',
-        title: t.typeFunny,
-        storagePath: '',
-        iconUrl: _styleIconUrlById['type_4'],
-        fallbackIcon: Icons.auto_awesome_outlined,
-      ),
-      _PickItem(
-        id: 'type_5',
-        title: t.typeRomantic,
-        storagePath: '',
-        iconUrl: _styleIconUrlById['type_5'],
-        fallbackIcon: Icons.auto_awesome_outlined,
+        iconUrl: _diceIconUrl,
       ),
     ];
+
+    if (_typeCatalog.isNotEmpty) {
+      out.addAll(
+        _typeCatalog.map(
+          (e) => _PickItem(id: e.id, title: e.name, iconUrl: e.iconUrl),
+        ),
+      );
+      return out;
+    }
+
+    // Built-in fallback.
+    out.addAll([
+      _PickItem(
+        id: 'type_friendly',
+        title: t.typeFriendly,
+        iconUrl: 'styl_icons/friendship.png',
+      ),
+      _PickItem(
+        id: 'type_adventure',
+        title: t.typeAdventure,
+        iconUrl: 'styl_icons/compas.png',
+      ),
+      _PickItem(
+        id: 'type_magic',
+        title: t.typeMagic,
+        iconUrl: 'styl_icons/magic.png',
+      ),
+      _PickItem(
+        id: 'type_funny',
+        title: t.typeFunny,
+        iconUrl: 'styl_icons/funny.png',
+      ),
+      _PickItem(
+        id: 'type_romantic',
+        title: t.typeRomantic,
+        iconUrl: 'styl_icons/friendship.png',
+      ),
+    ]);
+
+    return out;
   }
 
   int _heroIndex = 0;
   int _locIndex = 0;
   int _typeIndex = 0;
 
+  late final PageController _heroController;
+  late final PageController _locController;
+  late final PageController _typeController;
+
   @override
   void initState() {
     super.initState();
 
-    // Load any Firestore-provided iconUrl overrides (non-blocking).
-    _loadIconUrls();
+    _heroController = PageController(
+      viewportFraction: kCarouselViewportFraction,
+      initialPage: _heroIndex,
+    );
+    _locController = PageController(
+      viewportFraction: kCarouselViewportFraction,
+      initialPage: _locIndex,
+    );
+    _typeController = PageController(
+      viewportFraction: kCarouselViewportFraction,
+      initialPage: _typeIndex,
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _warmUpIcons();
@@ -352,6 +307,15 @@ class _StorySetupPageState extends State<StorySetupPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    // Reload story-setup catalogs when locale changes (titles are localized).
+    final locale = Localizations.localeOf(context);
+    final tag = locale.toLanguageTag();
+    if (_lastCatalogLocaleTag != tag) {
+      _lastCatalogLocaleTag = tag;
+      // Non-blocking.
+      _loadCatalogs(locale);
+    }
 
     final appLang = SettingsScope.of(context).settings.defaultLanguageCode;
     final next = context.read<VoiceInputController>();
@@ -378,6 +342,9 @@ class _StorySetupPageState extends State<StorySetupPage> {
 
   @override
   void dispose() {
+    _heroController.dispose();
+    _locController.dispose();
+    _typeController.dispose();
     _voice?.removeListener(_onVoiceChanged);
     _voice?.cancel();
     _ideaCtrl.dispose();
@@ -650,7 +617,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
       imageEnabled: settings.autoIllustrations,
       hero: hero.title,
       location: loc.title,
-      style: type.title,
+      storyType: type.title,
       idea: ideaText.isNotEmpty ? ideaText : null,
     );
 
@@ -664,7 +631,10 @@ class _StorySetupPageState extends State<StorySetupPage> {
       'selection': {
         'hero': setup.hero,
         'location': setup.location,
-        'style': setup.style,
+        // Backend contract currently expects selection.style.
+        // We map storyType -> style to avoid breaking the server while keeping
+        // only ONE type selector in the UI.
+        'style': setup.storyType,
       },
     };
 
@@ -696,7 +666,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
           'imageEnabled': setup.imageEnabled,
           'hero': setup.hero,
           'location': setup.location,
-          'style': setup.style,
+          'storyType': setup.storyType,
           // Bonus: pass the full data-only setup (including idea) for later use.
           'setup': setup,
         },
@@ -751,9 +721,35 @@ class _StorySetupPageState extends State<StorySetupPage> {
     final locations = _getLocations(context);
     final types = _getTypes(context);
 
+    // Defensive: catalogs can refresh asynchronously.
+    _heroIndex = _heroIndex.clamp(0, max(0, heroes.length - 1));
+    _locIndex = _locIndex.clamp(0, max(0, locations.length - 1));
+    _typeIndex = _typeIndex.clamp(0, max(0, types.length - 1));
+
     final hero = heroes[_heroIndex];
     final loc = locations[_locIndex];
     final type = types[_typeIndex];
+
+    void pickRandomAndJump({
+      required List<_PickItem> items,
+      required PageController controller,
+      required void Function(int nextIndex) commit,
+    }) {
+      final pool = <int>[];
+      for (var i = 0; i < items.length; i++) {
+        if (!items[i].isRandom) pool.add(i);
+      }
+      if (pool.isEmpty) return;
+
+      final r = Random();
+      final next = pool[r.nextInt(pool.length)];
+      commit(next);
+      controller.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    }
 
     return PopScope(
       canPop: false,
@@ -925,9 +921,20 @@ class _StorySetupPageState extends State<StorySetupPage> {
                               subtitle: t.swipeToChoose,
                               height: 240,
                               items: heroes,
-                              initialPage: _heroIndex,
-                              onPageChanged: (i) =>
-                                  setState(() => _heroIndex = i),
+                              controller: _heroController,
+                              onPageChanged: (i) {
+                                final picked = heroes[i];
+                                if (picked.isRandom) {
+                                  pickRandomAndJump(
+                                    items: heroes,
+                                    controller: _heroController,
+                                    commit: (next) =>
+                                        setState(() => _heroIndex = next),
+                                  );
+                                  return;
+                                }
+                                setState(() => _heroIndex = i);
+                              },
                               isDark: isDark,
                             ),
                             const SizedBox(height: 16),
@@ -936,9 +943,20 @@ class _StorySetupPageState extends State<StorySetupPage> {
                               subtitle: t.swipeToChoose,
                               height: 240,
                               items: locations,
-                              initialPage: _locIndex,
-                              onPageChanged: (i) =>
-                                  setState(() => _locIndex = i),
+                              controller: _locController,
+                              onPageChanged: (i) {
+                                final picked = locations[i];
+                                if (picked.isRandom) {
+                                  pickRandomAndJump(
+                                    items: locations,
+                                    controller: _locController,
+                                    commit: (next) =>
+                                        setState(() => _locIndex = next),
+                                  );
+                                  return;
+                                }
+                                setState(() => _locIndex = i);
+                              },
                               isDark: isDark,
                             ),
                             const SizedBox(height: 16),
@@ -947,9 +965,20 @@ class _StorySetupPageState extends State<StorySetupPage> {
                               subtitle: t.swipeToChoose,
                               height: 240,
                               items: types,
-                              initialPage: _typeIndex,
-                              onPageChanged: (i) =>
-                                  setState(() => _typeIndex = i),
+                              controller: _typeController,
+                              onPageChanged: (i) {
+                                final picked = types[i];
+                                if (picked.isRandom) {
+                                  pickRandomAndJump(
+                                    items: types,
+                                    controller: _typeController,
+                                    commit: (next) =>
+                                        setState(() => _typeIndex = next),
+                                  );
+                                  return;
+                                }
+                                setState(() => _typeIndex = i);
+                              },
                               isDark: isDark,
                             ),
                           ],
@@ -1252,7 +1281,7 @@ class _CarouselSection extends StatelessWidget {
   final String subtitle;
   final double height;
   final List<_PickItem> items;
-  final int initialPage;
+  final PageController controller;
   final ValueChanged<int> onPageChanged;
   final bool isDark;
 
@@ -1261,7 +1290,7 @@ class _CarouselSection extends StatelessWidget {
     required this.subtitle,
     required this.height,
     required this.items,
-    required this.initialPage,
+    required this.controller,
     required this.onPageChanged,
     required this.isDark,
   });
@@ -1269,13 +1298,8 @@ class _CarouselSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final controller = PageController(
-      // Keep item sizing stable across i18n/long labels.
-      // The item itself has a fixed width below; viewportFraction should match
-      // the reference value so pages don't become unexpectedly "fat".
-      viewportFraction: kCarouselViewportFraction,
-      initialPage: initialPage,
-    );
+    // PageController is owned by the parent state so we can programmatically
+    // jump/animate when user selects the Random (dice) card.
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1329,113 +1353,6 @@ class _CarouselSection extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _StorageImage extends StatelessWidget {
-  final String storagePath;
-  final double size;
-  final bool isDark;
-  final IconData fallbackIcon;
-
-  const _StorageImage({
-    required this.storagePath,
-    required this.size,
-    required this.isDark,
-    required this.fallbackIcon,
-  });
-
-  static final Map<String, Future<String>> _urlFutures = {};
-
-  Future<String> _getUrl() {
-    return _urlFutures.putIfAbsent(storagePath, () {
-      final f = FirebaseStorage.instance
-          .ref(storagePath)
-          .getDownloadURL()
-          .timeout(const Duration(seconds: 8));
-      // If URL resolution fails (network/rules), evict so the next build can retry.
-      return f.catchError((e) {
-        _urlFutures.remove(storagePath);
-        throw e;
-      });
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.white.withValues(alpha: 0.45);
-
-    if (storagePath.isEmpty) {
-      return Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          color: bg,
-        ),
-        child: Icon(fallbackIcon, size: size * 0.50),
-      );
-    }
-
-    return FutureBuilder<String>(
-      future: _getUrl(),
-      builder: (context, snap) {
-        final url = (snap.data ?? '').trim();
-        final isLoading =
-            snap.connectionState != ConnectionState.done && !snap.hasError;
-
-        if (isLoading) {
-          return Container(
-            width: size,
-            height: size,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              color: bg,
-            ),
-            child: const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
-        }
-
-        if (snap.hasError || url.isEmpty) {
-          return Container(
-            width: size,
-            height: size,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              color: bg,
-            ),
-            child: Icon(fallbackIcon, size: size * 0.50),
-          );
-        }
-
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: CachedNetworkImage(
-              imageUrl: url,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(color: bg),
-              errorWidget: (context, url, error) => Container(
-                color: bg,
-                alignment: Alignment.center,
-                child: Icon(fallbackIcon),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }
@@ -1501,29 +1418,13 @@ class _PickCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Center(
-                    child: random
-                        ? Container(
-                            width: imageSize,
-                            height: imageSize,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(18),
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : Colors.white.withValues(alpha: 0.45),
-                            ),
-                            child: Icon(
-                              Icons.casino_rounded,
-                              size: imageSize * 0.55,
-                            ),
-                          )
-                        : _PickIconImage(
-                            iconUrl: item.iconUrl,
-                            storagePath: item.storagePath,
-                            size: imageSize,
-                            isDark: isDark,
-                            fallbackIcon: item.fallbackIcon,
-                          ),
+                    child: NetworkIcon(
+                      item.iconUrl,
+                      size: imageSize,
+                      backgroundColor: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.white.withValues(alpha: 0.45),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -1545,70 +1446,15 @@ class _PickCard extends StatelessWidget {
   }
 }
 
-class _PickIconImage extends StatelessWidget {
-  final String? iconUrl;
-  final String storagePath;
-  final double size;
-  final bool isDark;
-  final IconData fallbackIcon;
-
-  const _PickIconImage({
-    required this.iconUrl,
-    required this.storagePath,
-    required this.size,
-    required this.isDark,
-    required this.fallbackIcon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final url = (iconUrl ?? '').trim();
-    final bg = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.white.withValues(alpha: 0.45);
-
-    if (url.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => Container(color: bg),
-            errorWidget: (context, url, error) => Container(
-              color: bg,
-              alignment: Alignment.center,
-              child: Icon(fallbackIcon, size: size * 0.50),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return _StorageImage(
-      storagePath: storagePath,
-      size: size,
-      isDark: isDark,
-      fallbackIcon: fallbackIcon,
-    );
-  }
-}
-
 class _PickItem {
   final String id;
   final String title;
-  final String storagePath;
-  final String? iconUrl;
-  final IconData fallbackIcon;
+  final String iconUrl;
 
   const _PickItem({
     required this.id,
     required this.title,
-    required this.storagePath,
-    this.iconUrl,
-    this.fallbackIcon = Icons.auto_awesome,
+    required this.iconUrl,
   });
 
   bool get isRandom => id.endsWith('_random');

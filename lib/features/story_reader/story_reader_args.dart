@@ -17,7 +17,7 @@ class StoryReaderArgs {
   final bool imageEnabled;
   final String hero;
   final String location;
-  final String style;
+  final String storyType;
 
   const StoryReaderArgs({
     this.initialResponse,
@@ -29,6 +29,6 @@ class StoryReaderArgs {
     this.imageEnabled = false,
     this.hero = '',
     this.location = '',
-    this.style = '',
+    this.storyType = '',
   });
 }

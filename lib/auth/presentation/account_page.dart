@@ -8,11 +8,19 @@ class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
 
   void _handleBack(BuildContext context) {
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go('/');
+    final nav = Navigator.of(context);
+    if (nav.canPop()) {
+      nav.pop();
+      return;
     }
+
+    if (context.canPop()) {
+      // GoRouter stack (if different from Navigator stack).
+      context.pop();
+      return;
+    }
+
+    context.go('/');
   }
 
   @override
@@ -33,6 +41,7 @@ class AccountPage extends StatelessWidget {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => _handleBack(context),
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           ),
         ),
         body: SafeArea(

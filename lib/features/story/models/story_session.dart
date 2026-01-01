@@ -7,7 +7,7 @@ class StorySession {
   final bool interactiveEnabled;
   final String hero;
   final String location;
-  final String style;
+  final String storyType;
   final String? idea;
 
   const StorySession({
@@ -19,7 +19,7 @@ class StorySession {
     required this.interactiveEnabled,
     required this.hero,
     required this.location,
-    required this.style,
+    required this.storyType,
     required this.idea,
   });
 
@@ -33,7 +33,7 @@ class StorySession {
       interactiveEnabled: true,
       hero: '',
       location: '',
-      style: '',
+      storyType: '',
       idea: null,
     );
   }
@@ -47,7 +47,7 @@ class StorySession {
     'interactiveEnabled': interactiveEnabled,
     'hero': hero,
     'location': location,
-    'style': style,
+    'storyType': storyType,
     'idea': idea,
   };
 
@@ -61,7 +61,9 @@ class StorySession {
       interactiveEnabled: (json['interactiveEnabled'] ?? true) as bool,
       hero: (json['hero'] ?? '') as String,
       location: (json['location'] ?? '') as String,
-      style: (json['style'] ?? '') as String,
+      // Accept legacy key 'style' for persisted sessions created before
+      // StoryType was introduced.
+      storyType: (json['storyType'] ?? json['style'] ?? '') as String,
       idea: json['idea'] as String?,
     );
   }

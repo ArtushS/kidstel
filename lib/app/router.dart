@@ -147,7 +147,14 @@ GoRouter buildRouter({required AuthController auth}) {
                 (map?['imageEnabled'] ?? setup?.imageEnabled ?? false) as bool,
             hero: (map?['hero'] ?? setup?.hero ?? '') as String,
             location: (map?['location'] ?? setup?.location ?? '') as String,
-            style: (map?['style'] ?? setup?.style ?? '') as String,
+            // Accept legacy key 'style' (older navigation payloads).
+            storyType:
+                (map?['storyType'] ??
+                        map?['type'] ??
+                        map?['style'] ??
+                        setup?.storyType ??
+                        '')
+                    as String,
           );
 
           return StoryReaderPage(args: args);

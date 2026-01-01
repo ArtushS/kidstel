@@ -7,7 +7,7 @@ class StorySetup {
   final bool imageEnabled;
   final String hero;
   final String location;
-  final String style;
+  final String storyType;
 
   /// User idea (typed or dictated)
   final String? idea;
@@ -21,7 +21,7 @@ class StorySetup {
     required this.imageEnabled,
     required this.hero,
     required this.location,
-    required this.style,
+    required this.storyType,
     this.idea,
   });
 }

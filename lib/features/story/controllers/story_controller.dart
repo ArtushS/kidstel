@@ -158,7 +158,8 @@ class StoryController extends ChangeNotifier {
       'selection': {
         'hero': _session.hero,
         'location': _session.location,
-        'style': _session.style,
+        // Backend expects selection.style; we store only StoryType in session.
+        'style': _session.storyType,
       },
     };
 
@@ -250,7 +251,7 @@ class StoryController extends ChangeNotifier {
       interactiveEnabled: _interactiveStoriesEnabled,
       hero: args.hero,
       location: args.location,
-      style: args.style,
+      storyType: args.storyType,
       idea: null,
     );
 
@@ -337,7 +338,8 @@ class StoryController extends ChangeNotifier {
       'selection': {
         'hero': _session.hero,
         'location': _session.location,
-        'style': _session.style,
+        // Backend expects selection.style; we store only StoryType in session.
+        'style': _session.storyType,
       },
       'choice': {'id': choice.id, 'payload': choice.payload},
     };

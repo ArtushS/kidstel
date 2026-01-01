@@ -1,5 +1,6 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+
+import 'network_icon.dart';
 
 class CarouselImageCard extends StatelessWidget {
   const CarouselImageCard({
@@ -29,23 +30,12 @@ class CarouselImageCard extends StatelessWidget {
             child: SizedBox(
               height: height,
               width: width,
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.cover, // ключ: не вылезает и всегда заполняет
-                placeholder: (context, url) => Container(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  alignment: Alignment.center,
-                  child: const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.broken_image_outlined),
-                ),
+              child: NetworkIcon(
+                imageUrl,
+                width: width,
+                height: height,
+                fit: BoxFit.cover,
+                borderRadius: BorderRadius.circular(18),
               ),
             ),
           ),

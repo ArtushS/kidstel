@@ -16,7 +16,7 @@ class ReaderPage extends StatelessWidget {
     final mockText = (s == null)
         ? null
         : 'Жил-был герой: ${s.hero}. Однажды он оказался в месте: ${s.location}. '
-              'История будет в стиле: ${s.style}. '
+              'Тип истории: ${s.storyType}. '
               'Скоро мы подключим генерацию через сервер и появятся развилки.';
 
     return Scaffold(
