@@ -7,6 +7,7 @@ class StoryChapter {
   final String text;
   final double progress;
   final String? imageUrl;
+  final String? imageBase64;
   final List<StoryChoice> choices;
 
   const StoryChapter({
@@ -15,6 +16,7 @@ class StoryChapter {
     required this.text,
     required this.progress,
     required this.imageUrl,
+    this.imageBase64,
     required this.choices,
   });
 
@@ -32,6 +34,7 @@ class StoryChapter {
       text: resp.text,
       progress: resp.progress.clamp(0.0, 1.0),
       imageUrl: resp.image?.url,
+      imageBase64: resp.image?.base64,
       choices: mappedChoices,
     );
   }
@@ -42,6 +45,7 @@ class StoryChapter {
     'text': text,
     'progress': progress,
     'imageUrl': imageUrl,
+    'imageBase64': imageBase64,
     'choices': choices.map((e) => e.toJson()).toList(growable: false),
   };
 
@@ -52,6 +56,7 @@ class StoryChapter {
       text: (json['text'] ?? '') as String,
       progress: (json['progress'] ?? 0.0).toDouble(),
       imageUrl: json['imageUrl'] as String?,
+      imageBase64: json['imageBase64'] as String?,
       choices: (json['choices'] as List? ?? const [])
           .whereType<Map>()
           .map((e) => StoryChoice.fromJson(Map<String, dynamic>.from(e)))

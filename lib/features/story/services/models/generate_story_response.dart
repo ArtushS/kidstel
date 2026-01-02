@@ -21,15 +21,28 @@ class GenerateStoryResponse {
   });
 
   factory GenerateStoryResponse.fromJson(Map<String, dynamic> json) {
+    final chapterRaw = json['chapterIndex'];
+    final progressRaw = json['progress'];
+
+    final chapterIndex = (chapterRaw is num)
+        ? chapterRaw.toInt()
+        : int.tryParse(chapterRaw?.toString() ?? '') ?? 0;
+
+    final progress = (progressRaw is num)
+        ? progressRaw.toDouble()
+        : double.tryParse(progressRaw?.toString() ?? '') ?? 0.0;
+
     return GenerateStoryResponse(
       requestId: (json['requestId'] ?? '') as String,
       storyId: (json['storyId'] ?? '') as String,
-      chapterIndex: (json['chapterIndex'] ?? 0) as int,
-      progress: (json['progress'] ?? 0.0).toDouble(),
+      chapterIndex: chapterIndex,
+      progress: progress,
       title: (json['title'] ?? '') as String,
       text: (json['text'] ?? '') as String,
-      image: (json['image'] is Map<String, dynamic>)
-          ? GeneratedImage.fromJson(json['image'] as Map<String, dynamic>)
+      image: (json['image'] is Map)
+          ? GeneratedImage.fromJson(
+              Map<String, dynamic>.from(json['image'] as Map),
+            )
           : null,
       choices: (json['choices'] as List? ?? const [])
           .whereType<Map>()
@@ -43,12 +56,40 @@ class GeneratedImage {
   final bool enabled;
   final String? url;
 
-  const GeneratedImage({required this.enabled, required this.url});
+  /// Optional inline image payload.
+  /// May be a raw base64 string or a data URI like `data:image/png;base64,...`.
+  final String? base64;
+
+  /// Optional MIME type hint (e.g. `image/png`).
+  final String? mimeType;
+
+  /// Optional flags used by some backends.
+  /// If present and true, UI may choose to show a placeholder.
+  final bool? disabled;
+  final String? reason;
+
+  const GeneratedImage({
+    required this.enabled,
+    required this.url,
+    this.base64,
+    this.mimeType,
+    this.disabled,
+    this.reason,
+  });
 
   factory GeneratedImage.fromJson(Map<String, dynamic> json) {
+    final rawEnabled = json['enabled'];
+    final enabled = rawEnabled is bool
+        ? rawEnabled
+        : (rawEnabled?.toString().toLowerCase().trim() == 'true');
+
     return GeneratedImage(
-      enabled: (json['enabled'] ?? false) as bool,
-      url: json['url'] as String?,
+      enabled: enabled,
+      url: json['url']?.toString(),
+      base64: json['base64']?.toString(),
+      mimeType: json['mimeType']?.toString(),
+      disabled: json['disabled'] is bool ? (json['disabled'] as bool) : null,
+      reason: json['reason']?.toString(),
     );
   }
 }

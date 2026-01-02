@@ -202,7 +202,7 @@ class AppSettings {
     safeModeEnabled: true,
     disableScaryContent: true,
     requireParentConfirmation: true,
-    autoIllustrations: true,
+    autoIllustrations: false,
     devIllustrationFallbackEnabled: const bool.fromEnvironment(
       'DEV_ILLUSTRATION_FALLBACK',
       defaultValue: kDebugMode,

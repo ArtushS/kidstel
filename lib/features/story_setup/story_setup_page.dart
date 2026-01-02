@@ -419,7 +419,8 @@ class _StorySetupPageState extends State<StorySetupPage> {
 
     final recognized = voice.consumeBestResult().trim();
     if (kDebugMode) {
-      debugPrint('STT commit="$recognized"');
+      final head = recognized.characters.take(18).toString();
+      debugPrint('STT commit: len=${recognized.length} head="$head"');
     }
     if (recognized.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -579,12 +580,12 @@ class _StorySetupPageState extends State<StorySetupPage> {
   Future<void> _onGenerate(BuildContext context) async {
     if (!_canGenerate(context)) return;
 
-    debugPrint('Generate pressed: entering _onGenerate()');
+    if (kDebugMode) {
+      debugPrint('Generate pressed: entering _onGenerate()');
+    }
 
     // IMPORTANT: send only the editable TextField content (never preview/buffer).
     final ideaText = _ideaCtrl.text.trim();
-
-    debugPrint('VOICE/IDEA -> "$ideaText"');
 
     if (kDebugMode) {
       final trimmed = ideaText.trim();
@@ -730,26 +731,9 @@ class _StorySetupPageState extends State<StorySetupPage> {
     final loc = locations[_locIndex];
     final type = types[_typeIndex];
 
-    void pickRandomAndJump({
-      required List<_PickItem> items,
-      required PageController controller,
-      required void Function(int nextIndex) commit,
-    }) {
-      final pool = <int>[];
-      for (var i = 0; i < items.length; i++) {
-        if (!items[i].isRandom) pool.add(i);
-      }
-      if (pool.isEmpty) return;
-
-      final r = Random();
-      final next = pool[r.nextInt(pool.length)];
-      commit(next);
-      controller.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutCubic,
-      );
-    }
+    // NOTE: we intentionally do NOT auto-jump away from the Random card.
+    // Users must be able to come back to Random after picking a concrete item.
+    // The actual random resolution happens on Generate via _resolveRandomIfNeeded.
 
     return PopScope(
       canPop: false,
@@ -923,16 +907,6 @@ class _StorySetupPageState extends State<StorySetupPage> {
                               items: heroes,
                               controller: _heroController,
                               onPageChanged: (i) {
-                                final picked = heroes[i];
-                                if (picked.isRandom) {
-                                  pickRandomAndJump(
-                                    items: heroes,
-                                    controller: _heroController,
-                                    commit: (next) =>
-                                        setState(() => _heroIndex = next),
-                                  );
-                                  return;
-                                }
                                 setState(() => _heroIndex = i);
                               },
                               isDark: isDark,
@@ -945,16 +919,6 @@ class _StorySetupPageState extends State<StorySetupPage> {
                               items: locations,
                               controller: _locController,
                               onPageChanged: (i) {
-                                final picked = locations[i];
-                                if (picked.isRandom) {
-                                  pickRandomAndJump(
-                                    items: locations,
-                                    controller: _locController,
-                                    commit: (next) =>
-                                        setState(() => _locIndex = next),
-                                  );
-                                  return;
-                                }
                                 setState(() => _locIndex = i);
                               },
                               isDark: isDark,
@@ -967,16 +931,6 @@ class _StorySetupPageState extends State<StorySetupPage> {
                               items: types,
                               controller: _typeController,
                               onPageChanged: (i) {
-                                final picked = types[i];
-                                if (picked.isRandom) {
-                                  pickRandomAndJump(
-                                    items: types,
-                                    controller: _typeController,
-                                    commit: (next) =>
-                                        setState(() => _typeIndex = next),
-                                  );
-                                  return;
-                                }
                                 setState(() => _typeIndex = i);
                               },
                               isDark: isDark,
@@ -1418,13 +1372,33 @@ class _PickCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Center(
-                    child: NetworkIcon(
-                      item.iconUrl,
-                      size: imageSize,
-                      backgroundColor: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.white.withValues(alpha: 0.45),
-                    ),
+                    child: item.id == 'loc_random'
+                        ? Container(
+                            width: imageSize,
+                            height: imageSize,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.white.withValues(alpha: 0.45),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.auto_awesome_rounded,
+                                size: (imageSize * 0.55).clamp(22.0, 56.0),
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.92)
+                                    : Colors.black.withValues(alpha: 0.75),
+                              ),
+                            ),
+                          )
+                        : NetworkIcon(
+                            item.iconUrl,
+                            size: imageSize,
+                            backgroundColor: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.white.withValues(alpha: 0.45),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 10),

@@ -1,127 +1,105 @@
 class GenerateStoryRequest {
-  final String requestId;
-  final String action; // "generate" | "continue"
+  /// Backward-compatible dispatcher field (server supports both / and /v1 endpoints).
+  /// Allowed: "generate" | "continue" | "illustrate".
+  final String action;
+
+  /// Optional; server will generate one if absent.
+  final String? requestId;
+
+  /// Required for continue/illustrate.
   final String? storyId;
 
-  final StoryInput input;
-  final StorySelection selection;
+  /// Optional for continue/illustrate.
+  final int? chapterIndex;
 
-  final StoryContext context;
+  // Common story parameters (server allowlists these).
+  final String? ageGroup; // "3_5" | "6_8" | "9_12"
+  final String? storyLang; // "ru" | "en" | "hy"
+  final String? storyLength; // "short" | "medium" | "long"
+  final double? creativityLevel; // 0..1
+  final bool? imageEnabled;
+
+  final StorySelection? selection;
+  final String? idea;
+
+  // Continue only
+  final StoryChoice? choice;
+
+  // Illustrate only
+  final String? prompt;
 
   const GenerateStoryRequest({
-    required this.requestId,
     required this.action,
-    required this.storyId,
-    required this.input,
-    required this.selection,
-    required this.context,
+    this.requestId,
+    this.storyId,
+    this.chapterIndex,
+    this.ageGroup,
+    this.storyLang,
+    this.storyLength,
+    this.creativityLevel,
+    this.imageEnabled,
+    this.selection,
+    this.idea,
+    this.choice,
+    this.prompt,
   });
 
-  Map<String, dynamic> toJson() => {
-    'requestId': requestId,
-    'action': action,
-    'storyId': storyId,
-    'input': input.toJson(),
-    'selection': selection.toJson(),
-    'context': context.toJson(),
-  };
-}
+  Map<String, dynamic> toJson() {
+    final v = <String, dynamic>{
+      'action': action,
+      if (requestId != null && requestId!.trim().isNotEmpty)
+        'requestId': requestId!.trim(),
+      if (storyId != null && storyId!.trim().isNotEmpty)
+        'storyId': storyId!.trim(),
+      if (chapterIndex != null) 'chapterIndex': chapterIndex,
+      if (ageGroup != null) 'ageGroup': ageGroup,
+      if (storyLang != null) 'storyLang': storyLang,
+      if (storyLength != null) 'storyLength': storyLength,
+      if (creativityLevel != null) 'creativityLevel': creativityLevel,
+      if (imageEnabled != null) 'image': {'enabled': imageEnabled},
+      if (selection != null) 'selection': selection!.toJson(),
+    };
 
-class StoryInput {
-  final String ageGroup; // "3_5" | "6_8" | "9_12"
-  final String storyLang; // "ru" | "en" | "hy"
-  final String promptLang; // same
-  final String responseLang; // same
-  final String storyLength; // "short"|"medium"|"long"
-  final String complexity; // "simple"|"normal"
-  final double creativityLevel; // 0..1
+    final ideaTrim = idea?.trim();
+    if (ideaTrim != null && ideaTrim.isNotEmpty) v['idea'] = ideaTrim;
 
-  final ImageOptions image;
+    if (choice != null) v['choice'] = choice!.toJson();
 
-  const StoryInput({
-    required this.ageGroup,
-    required this.storyLang,
-    required this.promptLang,
-    required this.responseLang,
-    required this.storyLength,
-    required this.complexity,
-    required this.creativityLevel,
-    required this.image,
-  });
+    final promptTrim = prompt?.trim();
+    if (promptTrim != null && promptTrim.isNotEmpty) v['prompt'] = promptTrim;
 
-  Map<String, dynamic> toJson() => {
-    'ageGroup': ageGroup,
-    'storyLang': storyLang,
-    'promptLang': promptLang,
-    'responseLang': responseLang,
-    'storyLength': storyLength,
-    'complexity': complexity,
-    'creativityLevel': creativityLevel,
-    'image': image.toJson(),
-  };
-}
-
-class ImageOptions {
-  final bool enabled; // must be sent always
-  final String mode; // "auto" (future: "paid_only")
-  final String? styleHint; // optional
-  final String? size; // optional
-
-  const ImageOptions({
-    required this.enabled,
-    this.mode = 'auto',
-    this.styleHint,
-    this.size,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'enabled': enabled,
-    'mode': mode,
-    if (styleHint != null) 'styleHint': styleHint,
-    if (size != null) 'size': size,
-  };
+    return v;
+  }
 }
 
 class StorySelection {
-  final String heroId; // from your pick item id
-  final String locationId;
-  final String styleId;
+  final String hero;
+  final String location;
 
-  /// Optional free-text idea entered by user
-  final String? idea;
+  /// Backend contract expects `selection.style` (we map storyType -> style).
+  final String style;
 
   const StorySelection({
-    required this.heroId,
-    required this.locationId,
-    required this.styleId,
-    this.idea,
+    required this.hero,
+    required this.location,
+    required this.style,
   });
 
   Map<String, dynamic> toJson() => {
-    'heroId': heroId,
-    'locationId': locationId,
-    'styleId': styleId,
-    if (idea != null && idea!.trim().isNotEmpty) 'idea': idea!.trim(),
+    'hero': hero,
+    'location': location,
+    'style': style,
   };
 }
 
-class StoryContext {
-  final bool safeMode;
-  final String client; // "flutter"
-  final String appVersion; // optional or "1.0"
-  final String platform; // "android"/"ios"/"desktop" (best-effort)
+class StoryChoice {
+  final String id;
+  final Map<String, dynamic> payload;
 
-  const StoryContext({
-    required this.safeMode,
-    required this.client,
-    required this.appVersion,
-    required this.platform,
+  const StoryChoice({
+    required this.id,
+    this.payload = const <String, dynamic>{},
   });
 
-  Map<String, dynamic> toJson() => {
-    'safeMode': safeMode,
-    'client': client,
-    'appVersion': appVersion,
-    'platform': platform,
-  };
+  Map<String, dynamic> toJson() => {'id': id, 'payload': payload};
 }

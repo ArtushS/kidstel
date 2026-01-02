@@ -109,6 +109,48 @@ class StoryController extends ChangeNotifier {
     }
   }
 
+  String _urlKind(String? url) {
+    final s = (url ?? '').trim();
+    if (s.isEmpty) return 'none';
+    final lower = s.toLowerCase();
+    if (lower.startsWith('https://')) return 'https';
+    if (lower.startsWith('http://')) return 'http';
+    if (lower.startsWith('gs://')) return 'gs';
+    if (lower.startsWith('storage://')) return 'storage';
+    if (lower.contains('://')) return 'other';
+    return 'path';
+  }
+
+  void _agentImageMetaLog({
+    required String stage,
+    GenerateStoryResponse? resp,
+    StoryChapter? chapter,
+  }) {
+    if (!kDebugMode) return;
+
+    if (resp != null) {
+      final img = resp.image;
+      final url = img?.url;
+      final base64 = img?.base64;
+      debugPrint(
+        '[StoryController] $stage respHasImage=${img != null} '
+        'hasUrl=${(url ?? '').trim().isNotEmpty} urlKind=${_urlKind(url)} '
+        'hasBase64=${(base64 ?? '').trim().isNotEmpty} base64Len=${(base64 ?? '').trim().length}',
+      );
+      return;
+    }
+
+    if (chapter != null) {
+      final url = chapter.imageUrl;
+      final base64 = chapter.imageBase64;
+      debugPrint(
+        '[StoryController] $stage chapterHasUrl=${(url ?? '').trim().isNotEmpty} '
+        'urlKind=${_urlKind(url)} chapterHasBase64=${(base64 ?? '').trim().isNotEmpty} '
+        'base64Len=${(base64 ?? '').trim().length}',
+      );
+    }
+  }
+
   DateTime _now() => DateTime.now().toUtc();
 
   String _ensureStoryId(String id) {
@@ -391,6 +433,7 @@ class StoryController extends ChangeNotifier {
     try {
       final json = await _storyService.callAgentJson(requestBody);
       final resp = GenerateStoryResponse.fromJson(json);
+      _agentImageMetaLog(stage: 'after-parse', resp: resp);
       onSuccess(resp);
     } catch (e) {
       debugPrint('Story request failed: $e');
@@ -411,6 +454,7 @@ class StoryController extends ChangeNotifier {
   }) {
     final prevId = _state.storyId;
     final chapter = StoryChapter.fromAgentResponse(resp);
+    _agentImageMetaLog(stage: 'after-chapter-map', chapter: chapter);
 
     final nextChapters = replace
         ? <StoryChapter>[chapter]
@@ -460,6 +504,7 @@ class StoryController extends ChangeNotifier {
   void _appendAgentResponse(GenerateStoryResponse resp) {
     final prevId = _state.storyId;
     final chapter = StoryChapter.fromAgentResponse(resp);
+    _agentImageMetaLog(stage: 'after-chapter-map', chapter: chapter);
 
     final chapters = [..._state.chapters];
 

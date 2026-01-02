@@ -14,6 +14,7 @@ import '../story/controllers/narration_controller.dart';
 import '../story/controllers/story_controller.dart';
 import '../story/models/story_chapter.dart';
 import '../story/models/story_state.dart';
+import '../story/widgets/story_image_section.dart';
 import 'story_reader_args.dart';
 
 class StoryReaderPage extends StatelessWidget {
@@ -97,6 +98,18 @@ class _StoryReaderBody extends StatelessWidget {
           },
           child: CustomScrollView(
             slivers: [
+              if (last != null)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: StoryImageSection(
+                      imageUrl: last.imageUrl,
+                      imageBase64: last.imageBase64,
+                      aspectRatio: 1.0,
+                    ),
+                  ),
+                ),
+
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 sliver: SliverToBoxAdapter(
