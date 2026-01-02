@@ -67,6 +67,56 @@ test('missing appcheck token -> 403', async () => {
     .send({ action: 'generate', storyLang: 'en', selection: { hero: 'Cat' } });
 
   assert.equal(res.status, 403);
+  assert.equal(res.body?.code, 'APPCHECK_MISSING');
+});
+
+test('placeholder/fake appcheck token -> 403 APPCHECK_INVALID', async () => {
+  const app = freshApp({ AUTH_REQUIRED: 'false', APPCHECK_REQUIRED: 'true' });
+
+  const res = await request(app)
+    .post('/')
+    .set('X-Firebase-AppCheck', 'placeholder')
+    .send({ action: 'generate', storyLang: 'en', selection: { hero: 'Cat' } });
+
+  assert.equal(res.status, 403);
+  assert.equal(res.body?.code, 'APPCHECK_INVALID');
+});
+
+test('appcheck enforced on all story routes (missing -> 403)', async () => {
+  const app = freshApp({ AUTH_REQUIRED: 'false', APPCHECK_REQUIRED: 'true' });
+
+  const routes: Array<{ path: string; body: any }> = [
+    { path: '/', body: { action: 'generate', storyLang: 'en', selection: { hero: 'Cat' } } },
+    { path: '/v1/story/create', body: { storyLang: 'en', selection: { hero: 'Cat' } } },
+    { path: '/v1/story/continue', body: { storyLang: 'en', storyId: 'story_test', chapterIndex: 0 } },
+    { path: '/v1/story/illustrate', body: { storyId: 'story_test', storyLang: 'en', prompt: 'A friendly cat' } },
+  ];
+
+  for (const r of routes) {
+    const res = await request(app).post(r.path).send(r.body);
+    assert.equal(res.status, 403, `expected 403 for ${r.path}`);
+    assert.equal(res.body?.code, 'APPCHECK_MISSING', `expected APPCHECK_MISSING for ${r.path}`);
+  }
+});
+
+test('appcheck enforced on all story routes (placeholder -> 403)', async () => {
+  const app = freshApp({ AUTH_REQUIRED: 'false', APPCHECK_REQUIRED: 'true' });
+
+  const routes: Array<{ path: string; body: any }> = [
+    { path: '/', body: { action: 'generate', storyLang: 'en', selection: { hero: 'Cat' } } },
+    { path: '/v1/story/create', body: { storyLang: 'en', selection: { hero: 'Cat' } } },
+    { path: '/v1/story/continue', body: { storyLang: 'en', storyId: 'story_test', chapterIndex: 0 } },
+    { path: '/v1/story/illustrate', body: { storyId: 'story_test', storyLang: 'en', prompt: 'A friendly cat' } },
+  ];
+
+  for (const r of routes) {
+    const res = await request(app)
+      .post(r.path)
+      .set('X-Firebase-AppCheck', 'placeholder')
+      .send(r.body);
+    assert.equal(res.status, 403, `expected 403 for ${r.path}`);
+    assert.equal(res.body?.code, 'APPCHECK_INVALID', `expected APPCHECK_INVALID for ${r.path}`);
+  }
 });
 
 test('strict schema rejects unknown fields -> 400', async () => {
