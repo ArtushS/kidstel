@@ -33,6 +33,31 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Local imports / external archives
+_import/
+
+# Local environment (keep secrets out of git)
+.env
+.env.*
+dart_defines*.json
+
+# Cloud Run server (Node/TS)
+server/node_modules/
+server/dist/
+
+# If pnpm is used in the future
+.pnpm-store/
+**/.pnpm-store/
+
+# Node logs / debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Node coverage
+**/coverage/
+
 # Symbolication related
 app.*.symbols
 
