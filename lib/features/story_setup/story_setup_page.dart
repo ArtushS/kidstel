@@ -580,18 +580,8 @@ class _StorySetupPageState extends State<StorySetupPage> {
   Future<void> _onGenerate(BuildContext context) async {
     if (!_canGenerate(context)) return;
 
-    if (kDebugMode) {
-      debugPrint('Generate pressed: entering _onGenerate()');
-    }
-
     // IMPORTANT: send only the editable TextField content (never preview/buffer).
     final ideaText = _ideaCtrl.text.trim();
-
-    if (kDebugMode) {
-      final trimmed = ideaText.trim();
-      final head = trimmed.characters.take(18).toString();
-      debugPrint('IDEA DEBUG: len=${trimmed.length} head="$head"');
-    }
 
     final heroes = _getHeroes(context);
     final locations = _getLocations(context);

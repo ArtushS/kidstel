@@ -39,12 +39,6 @@ class AgentImageGenerationService implements ImageGenerationService {
     }
   }
 
-  String _preview(String s, {int max = 120}) {
-    final v = s.replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (v.length <= max) return v;
-    return '${v.substring(0, max)}…';
-  }
-
   String _hostOrEmpty(String url) {
     try {
       final u = Uri.tryParse(url.trim());
@@ -95,7 +89,6 @@ class AgentImageGenerationService implements ImageGenerationService {
         'storyLang': story.locale,
         'chapterIndex': last.chapterIndex,
         'promptLen': prompt.length,
-        'promptPreview': _preview(prompt),
       },
     );
 
@@ -191,9 +184,9 @@ class AgentImageGenerationService implements ImageGenerationService {
             'rawUrlLooksGs': _looksLikeGsUrl(rawUrlTrimmed),
           },
         );
-        throw FormatException(
-          'Agent returned no image url/bytes. keys=[$keys]',
-        );
+
+        // Do not throw: treat as a soft failure so the UI can show a retry.
+        return const GeneratedImageResult();
       }
 
       if (result.hasUrl) {

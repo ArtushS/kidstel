@@ -171,6 +171,10 @@ export async function generateContinueResponse(opts: {
   };
   uid: string;
   previousText: string;
+  // Optional richer context (preferred over previousText).
+  storyTitle?: string;
+  previousChapters?: Array<{ chapterIndex: number; title?: string; text: string }>;
+  userChoiceLabel?: string;
   generation: { maxOutputTokens: number; temperature: number };
   requestTimeoutMs?: number;
   mock?: boolean;
@@ -200,10 +204,20 @@ export async function generateContinueResponse(opts: {
 
   const nextIndex = (opts.request.chapterIndex ?? 0) + 1;
 
+  const chapters = Array.isArray(opts.previousChapters) ? opts.previousChapters : [];
+  const trimmedChapters = chapters
+    .filter((c) => c && typeof c.text === 'string')
+    .slice(-4)
+    .map((c) => ({
+      chapterIndex: c.chapterIndex,
+      title: (c.title ?? '').toString().trim(),
+      text: c.text.toString(),
+    }));
+
   const prompt = {
     system: KIDS_POLICY_SYSTEM,
     user: {
-      task: `Continue the existing story with the next chapter (chapterIndex=${nextIndex}).`,
+      task: `Continue the SAME story with the next chapter (chapterIndex=${nextIndex}). Do NOT restart the story or introduce a new unrelated idea.`,
       constraints: {
         maxChoices: 3,
         language: opts.request.storyLang ?? 'en',
@@ -217,9 +231,22 @@ export async function generateContinueResponse(opts: {
       },
       previous: {
         storyId: opts.request.storyId,
-        lastChapterText: opts.previousText,
+        storyTitle: (opts.storyTitle ?? '').toString().trim(),
+        // Prefer multi-chapter context when provided.
+        chapters: trimmedChapters.length
+          ? trimmedChapters
+          : [
+              {
+                chapterIndex: opts.request.chapterIndex ?? 0,
+                title: (opts.storyTitle ?? '').toString().trim(),
+                text: opts.previousText,
+              },
+            ],
       },
-      userChoice: opts.request.choice ?? {},
+      userChoice: {
+        ...(opts.request.choice ?? {}),
+        label: (opts.userChoiceLabel ?? '').toString().trim(),
+      },
       outputSchema: {
         requestId: 'string',
         storyId: 'string',
@@ -235,6 +262,8 @@ export async function generateContinueResponse(opts: {
       outputRules: [
         'Return ONLY JSON. No markdown.',
         'Keep it kid-safe and reassuring.',
+        'Maintain continuity: same characters, setting, and tone.',
+        'Use the user choice to decide what happens next.',
       ],
       metadata: { uid: opts.uid },
     },

@@ -10,7 +10,7 @@ import { ZodError } from 'zod';
 
 import { readEnv } from './env.js';
 import { httpLogger, logger } from './logging.js';
-import { getAdminApp, getFirestore } from './firebase.js';
+import { getAdminApp, getFirestore, getStorageBucket } from './firebase.js';
 import { verifyRequestTokens } from './auth.js';
 import { moderateText } from './moderation.js';
 import {
@@ -24,11 +24,17 @@ import {
 import { generateContinueResponse, generateCreateResponse } from './storyEngine.js';
 import {
   enforceDailyLimit as enforceDailyLimitDefault,
+  getStoryChapter as getStoryChapterDefault,
+  getStoryMeta as getStoryMetaDefault,
+  listStoryChapters as listStoryChaptersDefault,
+  updateChapterIllustration as updateChapterIllustrationDefault,
   upsertStorySession as upsertStorySessionDefault,
+  writeStoryChapter as writeStoryChapterDefault,
   writeAudit as writeAuditDefault,
 } from './firestoreStore.js';
 import { createPolicyLoader } from './policy.js';
 import { isAppError, toSafeErrorBody, AppError } from './errors.js';
+import { generateImageWithVertex } from './vertexImage.js';
 
 function yyyymmdd(d: Date) {
   const y = d.getUTCFullYear();
@@ -81,8 +87,27 @@ export function createApp(
     firestore?: any;
     store?: {
       enforceDailyLimit?: typeof enforceDailyLimitDefault;
+      getStoryMeta?: typeof getStoryMetaDefault;
+      listStoryChapters?: typeof listStoryChaptersDefault;
+      getStoryChapter?: typeof getStoryChapterDefault;
+      writeStoryChapter?: typeof writeStoryChapterDefault;
+      updateChapterIllustration?: typeof updateChapterIllustrationDefault;
       upsertStorySession?: typeof upsertStorySessionDefault;
       writeAudit?: typeof writeAuditDefault;
+    };
+    image?: {
+      generateImageBytes?: typeof generateImageWithVertex;
+    };
+    storage?: {
+      // Upload image bytes and return a usable https URL.
+      uploadIllustration?: (opts: {
+        storyId: string;
+        chapterIndex: number;
+        bytes: Buffer;
+        contentType: string;
+        lang: string;
+        signedUrlDays: number;
+      }) => Promise<{ url: string; storagePath: string; bucket: string }>;
     };
   },
 ) {
@@ -92,8 +117,55 @@ export function createApp(
 
   const store = {
     enforceDailyLimit: deps?.store?.enforceDailyLimit ?? enforceDailyLimitDefault,
+    getStoryMeta: deps?.store?.getStoryMeta ?? getStoryMetaDefault,
+    listStoryChapters: deps?.store?.listStoryChapters ?? listStoryChaptersDefault,
+    getStoryChapter: deps?.store?.getStoryChapter ?? getStoryChapterDefault,
+    writeStoryChapter: deps?.store?.writeStoryChapter ?? writeStoryChapterDefault,
+    updateChapterIllustration: deps?.store?.updateChapterIllustration ?? updateChapterIllustrationDefault,
     upsertStorySession: deps?.store?.upsertStorySession ?? upsertStorySessionDefault,
     writeAudit: deps?.store?.writeAudit ?? writeAuditDefault,
+  };
+
+  const image = {
+    generateImageBytes: deps?.image?.generateImageBytes ?? generateImageWithVertex,
+  };
+
+  const storage = {
+    uploadIllustration:
+      deps?.storage?.uploadIllustration ??
+      (async (opts) => {
+        const bucketName = env.storageBucket;
+        const bucket = getStorageBucket(env.projectId, bucketName);
+        const objectPath = `stories/${opts.storyId}/chapters/${opts.chapterIndex}/illustration`;
+
+        const ext = opts.contentType.toLowerCase().includes('jpeg') ? 'jpg' : 'png';
+        const filePath = `${objectPath}.${ext}`;
+        const file = bucket.file(filePath);
+
+        await file.save(opts.bytes, {
+          resumable: false,
+          contentType: opts.contentType,
+          metadata: {
+            cacheControl: 'public, max-age=86400',
+            metadata: {
+              storyId: opts.storyId,
+              chapterIndex: String(opts.chapterIndex),
+              lang: opts.lang,
+            },
+          },
+        });
+
+        const [url] = await file.getSignedUrl({
+          action: 'read',
+          expires: Date.now() + opts.signedUrlDays * 24 * 60 * 60 * 1000,
+        });
+
+        return {
+          url,
+          bucket: bucketName,
+          storagePath: filePath,
+        };
+      }),
   };
   const policyLoader = createPolicyLoader({
     firestore: (fs ?? ({} as any)) as any,
@@ -103,7 +175,7 @@ export function createApp(
   });
 
   // Lazily initialize firebase-admin only if a request requires token verification.
-  const getAdminAppLazy = () => getAdminApp(env.projectId);
+  const getAdminAppLazy = () => getAdminApp(env.projectId, { storageBucket: env.storageBucket });
 
   // Per-UID/IP per-minute limiters (per instance).
   const uidBuckets = new Map<string, { resetAt: number; count: number }>();
@@ -322,6 +394,15 @@ export function createApp(
           storyId: out.storyId,
           uid: auth.uid,
           title: out.title,
+          lang: body.storyLang ?? lang,
+          ageGroup: body.ageGroup,
+          storyLength: body.storyLength,
+          creativityLevel: body.creativityLevel,
+          hero: body.selection?.hero,
+          location: body.selection?.location,
+          style: body.selection?.style,
+          idea: body.idea,
+          policyVersion: 'v1',
           chapters: [
             {
               chapterIndex: out.chapterIndex,
@@ -332,6 +413,22 @@ export function createApp(
               choices: (out.choices ?? []).map((c: any) => ({ id: c.id, label: c.label, payload: c.payload ?? {} })),
             },
           ],
+        });
+
+        // Also persist to chapters subcollection for robust continuation.
+        await store.writeStoryChapter(fs as any, {
+          storyId: out.storyId,
+          uid: auth.uid,
+          title: out.title,
+          lang: (body.storyLang ?? lang).toString(),
+          chapter: {
+            chapterIndex: out.chapterIndex,
+            title: out.title,
+            text: out.text,
+            progress: out.progress,
+            choices: (out.choices ?? []).map((c: any) => ({ id: c.id, label: c.label, payload: c.payload ?? {} })),
+            imageUrl: out.image?.url ?? null,
+          },
         });
 
         await store.writeAudit(fs as any, {
@@ -381,6 +478,12 @@ export function createApp(
       }
 
       const body = ContinueRequestSchema.parse(req.body ?? {});
+      const hasChoiceId = (body.choice?.id ?? '').toString().trim().length > 0;
+      const hasChoiceLabel = ((body.choice as any)?.label ?? '').toString().trim().length > 0;
+      const hasChoiceText = ((body.choice as any)?.text ?? '').toString().trim().length > 0;
+      if (!hasChoiceId && !hasChoiceLabel && !hasChoiceText) {
+        return res.status(400).json({ error: 'Invalid request' });
+      }
       const lang = getLangOrDefault(body.storyLang);
       const model = policy.model_allowlist.includes(env.geminiModel) ? env.geminiModel : policy.model_allowlist[0];
 
@@ -410,13 +513,30 @@ export function createApp(
         throw e;
       }
 
-      const snap = await fs.collection('stories').doc(body.storyId).get();
-      if (!snap.exists) return res.status(404).json({ error: 'Story not found' });
-      const data = snap.data() as any;
-      if (data?.uid !== auth.uid) return res.status(403).json({ error: 'Forbidden' });
+      const meta = await store.getStoryMeta(fs as any, body.storyId);
+      if (!meta) return res.status(404).json({ error: 'Story not found' });
+      if (meta.uid !== auth.uid) return res.status(403).json({ error: 'Forbidden' });
 
-      const chapters = Array.isArray(data?.chapters) ? data.chapters : [];
-      const last = chapters.length ? chapters[chapters.length - 1] : null;
+      // Prefer chapter subcollection; fall back to story.chapters array.
+      const recentChapters = await store.listStoryChapters(fs as any, body.storyId, { limit: 4 });
+      const last = recentChapters.length ? recentChapters[recentChapters.length - 1] : null;
+      const currentIndex = typeof last?.chapterIndex === 'number'
+        ? last.chapterIndex
+        : typeof meta.latestChapterIndex === 'number'
+          ? meta.latestChapterIndex
+          : body.chapterIndex ?? 0;
+
+      // Resolve choice label if client didn't send it.
+      const choiceId = body.choice?.id?.toString().trim() ?? '';
+      const choiceLabelFromClient = body.choice?.label?.toString().trim() || body.choice?.text?.toString().trim() || '';
+      const choiceLabelFromStory = (() => {
+        if (!last || !choiceId) return '';
+        const choices = Array.isArray((last as any).choices) ? (last as any).choices : [];
+        const found = choices.find((c: any) => (c?.id ?? '').toString() === choiceId);
+        return (found?.label ?? '').toString().trim();
+      })();
+      const choiceLabel = choiceLabelFromClient || choiceLabelFromStory;
+
       const prevText = (last?.text ?? '').toString();
 
       const combinedInput = JSON.stringify({
@@ -456,17 +576,25 @@ export function createApp(
         geminiModel: model,
         uid: auth.uid,
         previousText: prevText,
+        storyTitle: meta.title,
+        previousChapters: recentChapters.map((c: any) => ({
+          chapterIndex: c.chapterIndex,
+          title: c.title,
+          text: c.text,
+        })),
+        userChoiceLabel: choiceLabel,
         request: {
           requestId: body.requestId,
           storyId: body.storyId,
-          chapterIndex: last?.chapterIndex ?? body.chapterIndex ?? 0,
+          chapterIndex: currentIndex,
           choice: body.choice ?? {},
-          ageGroup: body.ageGroup,
-          storyLang: body.storyLang,
-          storyLength: body.storyLength,
-          hero: body.selection?.hero,
-          location: body.selection?.location,
-          storyType: body.selection?.style,
+          // Prefer stored meta for continuity; fall back to request.
+          ageGroup: (meta.ageGroup ?? undefined) as any ?? body.ageGroup,
+          storyLang: (meta.lang ?? undefined) as any ?? body.storyLang,
+          storyLength: (meta.storyLength ?? undefined) as any ?? body.storyLength,
+          hero: (meta.hero ?? undefined) as any ?? body.selection?.hero,
+          location: (meta.location ?? undefined) as any ?? body.selection?.location,
+          storyType: (meta.style ?? undefined) as any ?? body.selection?.style,
         },
         generation: { maxOutputTokens: policy.max_output_tokens, temperature: policy.temperature },
         requestTimeoutMs: policy.request_timeout_ms,
@@ -491,7 +619,7 @@ export function createApp(
         );
       }
 
-      const nextChapters = chapters.concat([
+      const nextChapters = recentChapters.concat([
         {
           chapterIndex: out.chapterIndex,
           title: out.title,
@@ -502,10 +630,35 @@ export function createApp(
         },
       ]);
 
+      // Persist new chapter into subcollection.
+      await store.writeStoryChapter(fs as any, {
+        storyId: out.storyId,
+        uid: auth.uid,
+        title: meta.title ?? out.title,
+        lang: (meta.lang ?? body.storyLang ?? lang).toString(),
+        chapter: {
+          chapterIndex: out.chapterIndex,
+          title: out.title,
+          text: out.text,
+          progress: out.progress,
+          choices: (out.choices ?? []).map((c: any) => ({ id: c.id, label: c.label, payload: c.payload ?? {} })),
+          imageUrl: out.image?.url ?? null,
+        },
+      });
+
       await store.upsertStorySession(fs as any, {
         storyId: out.storyId,
         uid: auth.uid,
-        title: data?.title ?? out.title,
+        title: meta.title ?? out.title,
+        lang: meta.lang ?? body.storyLang ?? lang,
+        ageGroup: meta.ageGroup ?? body.ageGroup,
+        storyLength: meta.storyLength ?? body.storyLength,
+        creativityLevel: meta.creativityLevel ?? body.creativityLevel,
+        hero: meta.hero ?? body.selection?.hero,
+        location: meta.location ?? body.selection?.location,
+        style: meta.style ?? body.selection?.style,
+        idea: meta.idea ?? body.idea,
+        policyVersion: meta.policyVersion ?? 'v1',
         chapters: nextChapters,
       });
 
@@ -569,12 +722,9 @@ export function createApp(
         }
       }
 
-      // 1x1 transparent PNG.
-      const base64 =
-        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/xcAAwMCAO9pN1cAAAAASUVORK5CYII=';
+      const requestId = body.requestId?.trim() || `req_${randomUUID()}`;
 
       if (!policy.enable_illustrations) {
-        const requestId = body.requestId?.trim() || `req_${randomUUID()}`;
         if (!env.storeDisabled) {
           await store.writeAudit(fs as any, {
             requestId,
@@ -586,50 +736,214 @@ export function createApp(
           }).catch(() => undefined);
         }
 
+        // Backward/forward compatible response: include `image` object.
         return res.status(200).json(
-          IllustrationResponseSchema.parse({
-            disabled: true,
-            reason: 'Illustrations are disabled by policy',
-            image: { base64 },
+          AgentResponseSchema.parse({
+            requestId,
+            storyId: body.storyId,
+            chapterIndex: body.chapterIndex ?? 0,
+            progress: 0,
+            title: 'Illustration unavailable',
+            text: 'Illustrations are disabled.',
+            image: { enabled: false, url: null, disabled: true, reason: 'illustrations_disabled' },
+            choices: [],
           }),
         );
       }
 
-      // Still no 501: placeholder until a real image backend is wired.
-      const requestId = body.requestId?.trim() || `req_${randomUUID()}`;
-      if (!env.storeDisabled) {
+      // Illustrations require Firestore for ownership + chapter text.
+      if (env.storeDisabled) {
+        return res.status(200).json(
+          AgentResponseSchema.parse({
+            requestId,
+            storyId: body.storyId,
+            chapterIndex: body.chapterIndex ?? 0,
+            progress: 0,
+            title: 'Illustration unavailable',
+            text: 'Illustrations are not configured in this environment.',
+            image: { enabled: false, url: null, disabled: true, reason: 'store_disabled' },
+            choices: [],
+          }),
+        );
+      }
+      if (!fs) throw new AppError({ status: 503, code: 'STORE_UNAVAILABLE', safeMessage: 'Service temporarily disabled' });
+
+      const meta = await store.getStoryMeta(fs as any, body.storyId);
+      if (!meta) return res.status(404).json({ error: 'Story not found' });
+      if (meta.uid !== auth.uid) return res.status(403).json({ error: 'Forbidden' });
+
+      const lang = getLangOrDefault(body.storyLang ?? meta.lang);
+      const idx = body.chapterIndex;
+
+      const chapter = await store.getStoryChapter(fs as any, body.storyId, idx);
+      if (!chapter) return res.status(404).json({ error: 'Chapter not found' });
+
+      const rawPrompt = body.prompt.toString().trim();
+
+      // IMPORTANT: never log the prompt.
+      const safePrompt = [
+        'Children\'s book illustration. Friendly, warm, and non-scary.',
+        // Avoid including banned keywords in the policy line itself (our moderation is keyword-based).
+        'No scary scenes. No dangerous items. No hateful symbols.',
+        `Language: ${lang}.`,
+        rawPrompt,
+      ]
+        .join('\n')
+        .trim();
+
+      const mod = moderateText(safePrompt, policy.max_input_chars);
+      if (!mod.allowed) {
         await store.writeAudit(fs as any, {
           requestId,
           uid: auth.uid,
           route,
-          blocked: false,
+          blocked: true,
+          blockReason: `moderation_input:${mod.reason}`,
           storyId: body.storyId,
         }).catch(() => undefined);
+
+        return res.status(200).json(
+          AgentResponseSchema.parse({
+            requestId,
+            storyId: body.storyId,
+            chapterIndex: idx,
+            progress: chapter.progress ?? 0,
+            title: chapter.title ?? meta.title ?? 'Story',
+            text: chapter.text ?? '',
+            image: { enabled: false, url: null, disabled: true, reason: 'moderation_input' },
+            choices: [],
+          }),
+        );
       }
 
-      return res.status(200).json(
-        IllustrationResponseSchema.parse({
-          disabled: false,
-          reason: 'Illustration generation is not configured yet',
-          image: { base64 },
-        }),
-      );
+      try {
+        const img = await image.generateImageBytes({
+          projectId: env.projectId,
+          location: env.vertexLocation,
+          model: env.vertexImageModel,
+          prompt: safePrompt,
+          aspectRatio: '16:9',
+          sampleCount: 1,
+        } as any);
+
+        if (!img?.bytes || (img.bytes as Buffer).length === 0) {
+          throw new AppError({ status: 502, code: 'IMAGE_EMPTY', safeMessage: 'Illustration unavailable' });
+        }
+
+        try {
+          const uploaded = await storage.uploadIllustration({
+            storyId: body.storyId,
+            chapterIndex: idx,
+            bytes: img.bytes,
+            contentType: img.mimeType,
+            lang,
+            signedUrlDays: env.imageSignedUrlDays,
+          });
+
+          const url = (uploaded?.url ?? '').toString().trim();
+          if (!url || !(url.startsWith('https://') || url.startsWith('http://'))) {
+            throw new Error('upload returned invalid url');
+          }
+
+          await store.updateChapterIllustration(fs as any, {
+            storyId: body.storyId,
+            chapterIndex: idx,
+            imageUrl: url,
+            imageStoragePath: `gs://${uploaded.bucket}/${uploaded.storagePath}`,
+            imagePrompt: safePrompt,
+          });
+
+          await store.writeAudit(fs as any, {
+            requestId,
+            uid: auth.uid,
+            route,
+            blocked: false,
+            storyId: body.storyId,
+          }).catch(() => undefined);
+
+          return res.status(200).json(
+            AgentResponseSchema.parse({
+              requestId,
+              storyId: body.storyId,
+              chapterIndex: idx,
+              progress: chapter.progress ?? 0,
+              title: chapter.title ?? meta.title ?? 'Story',
+              text: chapter.text ?? '',
+              image: {
+                enabled: true,
+                url,
+                prompt: safePrompt,
+                storagePath: uploaded.storagePath,
+              },
+              choices: [],
+            }),
+          );
+        } catch (uploadErr: any) {
+          // Storage upload failed. Fall back to inline base64 to avoid client crashes.
+          const base64 = `data:${img.mimeType};base64,${(img.bytes as Buffer).toString('base64')}`;
+          return res.status(200).json(
+            AgentResponseSchema.parse({
+              requestId,
+              storyId: body.storyId,
+              chapterIndex: idx,
+              progress: chapter.progress ?? 0,
+              title: chapter.title ?? meta.title ?? 'Story',
+              text: chapter.text ?? '',
+              image: {
+                enabled: true,
+                url: null,
+                base64,
+                mimeType: img.mimeType,
+                prompt: safePrompt,
+              },
+              choices: [],
+            }),
+          );
+        }
+      } catch (e: any) {
+        // Never crash; return structured error.
+        logger.error({ err: e, storyId: body.storyId, chapterIndex: idx, requestId }, 'illustration generation failed');
+
+        if (!env.storeDisabled) {
+          await store.writeAudit(fs as any, {
+            requestId,
+            uid: auth.uid,
+            route,
+            blocked: true,
+            blockReason: 'illustration_failed',
+            storyId: body.storyId,
+          }).catch(() => undefined);
+        }
+
+        return res.status(200).json(
+          AgentResponseSchema.parse({
+            requestId,
+            storyId: body.storyId,
+            chapterIndex: idx,
+            progress: chapter.progress ?? 0,
+            title: chapter.title ?? meta.title ?? 'Story',
+            text: chapter.text ?? '',
+            image: { enabled: false, url: null, disabled: true, reason: 'illustration_failed' },
+            choices: [],
+          }),
+        );
+      }
     } catch (e: any) {
       logger.error({ err: e }, 'illustrate failed');
       if (e instanceof ZodError) return res.status(400).json({ error: 'Invalid request' });
       if (isAppError(e)) return res.status(e.status).json(toSafeErrorBody(e));
 
-      // Still avoid 501.
-      return res.status(200).json(
-        IllustrationResponseSchema.parse({
-          disabled: true,
-          reason: 'Illustrations unavailable',
-          image: {
-            base64:
-              'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/xcAAwMCAO9pN1cAAAAASUVORK5CYII=',
-          },
-        }),
-      );
+      // Never 501; structured, forward-compatible error.
+      return res.status(200).json({
+        requestId: `req_${randomUUID()}`,
+        storyId: (req.body?.storyId ?? 'unknown').toString(),
+        chapterIndex: Number(req.body?.chapterIndex ?? 0),
+        progress: 0,
+        title: 'Illustration unavailable',
+        text: 'Illustrations unavailable',
+        image: { enabled: false, url: null, disabled: true, reason: 'illustrations_unavailable' },
+        choices: [],
+      });
     }
   }
 

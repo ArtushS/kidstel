@@ -23,6 +23,18 @@ function getAppCheckToken(req: Request): string | null {
   return h.trim();
 }
 
+function getDevUid(req: Request): string | null {
+  // DEV/TEST ONLY: allow stable anonymous uid across requests when AUTH_REQUIRED=false.
+  // This is never used in production auth flows.
+  const h = req.header('X-KidsTel-Dev-Uid') ?? req.header('x-kidstel-dev-uid');
+  if (!h) return null;
+  const v = h.trim();
+  if (!v) return null;
+  // Keep it conservative.
+  if (!/^[a-zA-Z0-9_\-]{3,64}$/.test(v)) return null;
+  return v;
+}
+
 export async function verifyRequestTokens(opts: {
   req: Request;
   getAdminApp: () => admin.app.App;
@@ -42,8 +54,11 @@ export async function verifyRequestTokens(opts: {
         safeMessage: 'Unauthorized',
       });
     }
-    // Anonymous mode (intended for local testing only)
-    decoded = { uid: `anon_${randomUUID()}` } as any;
+    // Anonymous mode (intended for local testing only).
+    // Use a stable per-client uid when provided (DEV/TEST), otherwise random.
+    const nodeEnv = (process.env.NODE_ENV ?? '').toString().trim().toLowerCase();
+    const devUid = nodeEnv !== 'production' ? getDevUid(req) : null;
+    decoded = { uid: devUid ? `anon_${devUid}` : `anon_${randomUUID()}` } as any;
   } else {
     try {
       decoded = await admin.auth(getAdminApp()).verifyIdToken(bearer);

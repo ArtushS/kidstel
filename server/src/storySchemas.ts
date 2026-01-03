@@ -34,6 +34,11 @@ export const ContinueRequestSchema = z.object({
   chapterIndex: z.number().int().min(0).max(99).optional(),
   choice: z.object({
     id: z.string().trim().max(64).optional(),
+    // Optional, but helpful for deterministic continuation.
+    label: ShortText.optional(),
+    // Optional alternate representation.
+    choiceIndex: z.number().int().min(0).max(9).optional(),
+    text: ShortText.optional(),
     payload: z.record(z.any()).optional(),
   }).strict().optional(),
 
@@ -57,8 +62,8 @@ export const IllustrateRequestSchema = z.object({
   requestId: z.string().trim().max(64).optional(),
   storyId: SafeId,
   storyLang: LangSchema.optional(),
-  chapterIndex: z.number().int().min(0).max(99).optional(),
-  prompt: MediumText.optional(),
+  chapterIndex: z.number().int().min(0).max(99),
+  prompt: MediumText.min(1),
 }).strict();
 
 export const IllustrationResponseSchema = z.object({
@@ -81,6 +86,15 @@ export const AgentResponseSchema = z.object({
     .object({
       enabled: z.boolean(),
       url: z.string().nullable().optional(),
+      // Optional inline image payload.
+      base64: z.string().optional(),
+      mimeType: z.string().optional(),
+      // Optional flags used by some backends.
+      disabled: z.boolean().optional(),
+      reason: z.string().optional(),
+      // Extra metadata (ignored by older clients).
+      prompt: z.string().optional(),
+      storagePath: z.string().optional(),
     })
     .nullable()
     .optional(),

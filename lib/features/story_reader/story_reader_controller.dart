@@ -98,7 +98,11 @@ class StoryReaderController extends ChangeNotifier {
         'creativityLevel': _creativityLevel,
         'image': {'enabled': _imageEnabled},
         'selection': {'hero': _hero, 'location': _location, 'style': _style},
-        'choice': {'id': choice.id, 'payload': choice.payload},
+        'choice': {
+          'id': choice.id,
+          'label': choice.label,
+          'payload': choice.payload,
+        },
       };
 
       final json = await storyService.callAgentJson(body);

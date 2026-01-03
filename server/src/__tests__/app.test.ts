@@ -89,7 +89,7 @@ test('appcheck enforced on all story routes (missing -> 403)', async () => {
     { path: '/', body: { action: 'generate', storyLang: 'en', selection: { hero: 'Cat' } } },
     { path: '/v1/story/create', body: { storyLang: 'en', selection: { hero: 'Cat' } } },
     { path: '/v1/story/continue', body: { storyLang: 'en', storyId: 'story_test', chapterIndex: 0 } },
-    { path: '/v1/story/illustrate', body: { storyId: 'story_test', storyLang: 'en', prompt: 'A friendly cat' } },
+    { path: '/v1/story/illustrate', body: { storyId: 'story_test', storyLang: 'en', chapterIndex: 0, prompt: 'A friendly cat' } },
   ];
 
   for (const r of routes) {
@@ -106,7 +106,7 @@ test('appcheck enforced on all story routes (placeholder -> 403)', async () => {
     { path: '/', body: { action: 'generate', storyLang: 'en', selection: { hero: 'Cat' } } },
     { path: '/v1/story/create', body: { storyLang: 'en', selection: { hero: 'Cat' } } },
     { path: '/v1/story/continue', body: { storyLang: 'en', storyId: 'story_test', chapterIndex: 0 } },
-    { path: '/v1/story/illustrate', body: { storyId: 'story_test', storyLang: 'en', prompt: 'A friendly cat' } },
+    { path: '/v1/story/illustrate', body: { storyId: 'story_test', storyLang: 'en', chapterIndex: 0, prompt: 'A friendly cat' } },
   ];
 
   for (const r of routes) {
@@ -149,10 +149,130 @@ test('illustrate returns 200 and never 501', async () => {
 
   const res = await request(app)
     .post('/v1/story/illustrate')
-    .send({ storyId: 'story_test', storyLang: 'en', prompt: 'A friendly cat' });
+    .send({ storyId: 'story_test', storyLang: 'en', chapterIndex: 0, prompt: 'A friendly cat' });
 
   assert.equal(res.status, 200);
   assert.ok(res.body.image);
+});
+
+test('continue keeps storyId and increments chapterIndex (mock engine + store)', async () => {
+  // Minimal in-memory store so continue can load story context.
+  const mem: any = {
+    meta: { storyId: 'story_test', uid: 'anon_testuid', title: 'T', lang: 'en', latestChapterIndex: 0 },
+    chapters: [
+      {
+        chapterIndex: 0,
+        title: 'T',
+        text: 'Once upon a time...',
+        progress: 0.25,
+        choices: [{ id: 'c1', label: 'Go outside', payload: { action: 'continue' } }],
+      },
+    ],
+  };
+
+  const app = freshAppWithDeps(
+    {
+      AUTH_REQUIRED: 'false',
+      APPCHECK_REQUIRED: 'false',
+      STORE_DISABLED: 'false',
+    },
+    {
+      firestore: {},
+      store: {
+        enforceDailyLimit: async () => undefined,
+        writeAudit: async () => undefined,
+        getStoryMeta: async () => mem.meta,
+        listStoryChapters: async () => mem.chapters,
+        getStoryChapter: async (_fs: any, _sid: string, idx: number) => mem.chapters.find((c: any) => c.chapterIndex === idx) ?? null,
+        writeStoryChapter: async (_fs: any, opts: any) => {
+          mem.chapters.push(opts.chapter);
+          mem.meta.latestChapterIndex = opts.chapter.chapterIndex;
+        },
+        updateChapterIllustration: async () => undefined,
+        upsertStorySession: async () => undefined,
+      },
+    },
+  );
+
+  const res = await request(app)
+    .post('/')
+    .set('X-KidsTel-Dev-Uid', 'testuid')
+    .send({ action: 'continue', storyId: 'story_test', chapterIndex: 0, storyLang: 'en', choice: { id: 'c1' } });
+
+  assert.equal(res.status, 200);
+  assert.equal(res.body.storyId, 'story_test');
+  assert.equal(res.body.chapterIndex, 1);
+});
+
+test('illustrate returns https url when enabled (mock image+storage)', async () => {
+  const mem: any = {
+    meta: { storyId: 'story_test', uid: 'anon_testuid', title: 'T', lang: 'en', latestChapterIndex: 0 },
+    chapters: [
+      {
+        chapterIndex: 0,
+        title: 'T',
+        text: 'A friendly scene.',
+        progress: 0.25,
+        choices: [],
+      },
+    ],
+  };
+
+  const app = freshAppWithDeps(
+    {
+      AUTH_REQUIRED: 'false',
+      APPCHECK_REQUIRED: 'false',
+      STORE_DISABLED: 'false',
+      POLICY_STATIC_JSON: JSON.stringify({
+        enable_story_generation: true,
+        enable_illustrations: true,
+        model_allowlist: ['gemini-1.5-flash'],
+        daily_story_limit: 40,
+        uid_rate_per_min: 60,
+        ip_rate_per_min: 120,
+        max_body_kb: 64,
+        request_timeout_ms: 25000,
+        max_input_chars: 1200,
+        max_output_chars: 12000,
+        max_output_tokens: 256,
+        temperature: 0.2,
+      }),
+    },
+    {
+      firestore: {},
+      store: {
+        enforceDailyLimit: async () => undefined,
+        writeAudit: async () => undefined,
+        getStoryMeta: async () => mem.meta,
+        getStoryChapter: async () => mem.chapters[0],
+        listStoryChapters: async () => mem.chapters,
+        writeStoryChapter: async () => undefined,
+        updateChapterIllustration: async (_fs: any, opts: any) => {
+          mem.chapters[0].imageUrl = opts.imageUrl;
+        },
+        upsertStorySession: async () => undefined,
+      },
+      image: {
+        generateImageBytes: async () => ({ bytes: Buffer.from([1, 2, 3]), mimeType: 'image/png' } as any),
+      },
+      storage: {
+        uploadIllustration: async () => ({
+          url: 'https://example.com/illustration.png',
+          storagePath: 'stories/story_test/chapters/0/illustration.png',
+          bucket: 'test-bucket',
+        }),
+      },
+    },
+  );
+
+  const res = await request(app)
+    .post('/v1/story/illustrate')
+    .set('X-KidsTel-Dev-Uid', 'testuid')
+    .send({ storyId: 'story_test', storyLang: 'en', chapterIndex: 0, prompt: 'A friendly cat' });
+
+  assert.equal(res.status, 200);
+  assert.equal(res.body?.image?.enabled, true);
+  assert.ok(typeof res.body?.image?.url === 'string' && res.body.image.url.startsWith('https://'));
 });
 
 test('moderation blocked -> 200 safe stub + headers', async () => {

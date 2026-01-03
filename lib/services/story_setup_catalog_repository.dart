@@ -74,7 +74,7 @@ class StorySetupCatalogRepository {
     } catch (e) {
       if (kDebugMode) {
         debugPrint(
-          '[StorySetupCatalogRepository] $label: orderBy(order) failed: $e; falling back to unsorted get()',
+          '[StorySetupCatalogRepository] $label: orderBy(order) failed; falling back to unsorted get() ($e)',
         );
       }
       return await col.get();
@@ -100,22 +100,8 @@ class StorySetupCatalogRepository {
 
     if (kDebugMode) {
       debugPrint(
-        '[StorySetupCatalogRepository] raw snapshot "$name" source=$sourceLabel: docs=${snap.docs.length}',
+        '[StorySetupCatalogRepository] fetched "$name" source=$sourceLabel: docs=${snap.docs.length}',
       );
-      for (final d in snap.docs.take(3)) {
-        final data = d.data();
-        final keys = data.keys.toList(growable: false);
-        final previewName = (data['name'] ?? '').toString().trim();
-        final previewIconUrl = (data['iconUrl'] ?? data['icon_url'] ?? '')
-            .toString()
-            .trim();
-        final previewIconPath = (data['iconPath'] ?? data['icon_path'] ?? '')
-            .toString()
-            .trim();
-        debugPrint(
-          '[StorySetupCatalogRepository] sample "$name/${d.id}" source=$sourceLabel: keys=$keys name="$previewName" iconUrl="$previewIconUrl" iconPath="$previewIconPath"',
-        );
-      }
     }
 
     final items = <StorySetupCatalogItem>[];
@@ -126,22 +112,12 @@ class StorySetupCatalogRepository {
       final displayName = _pickDisplayName(doc, locale: locale);
       if (displayName.isEmpty) {
         skippedMissingTitle++;
-        if (kDebugMode) {
-          debugPrint(
-            '[StorySetupCatalogRepository] skip "$name/${doc.id}" source=$sourceLabel: missing title/name',
-          );
-        }
         continue;
       }
 
       final iconRef = _pickIconRef(doc);
       if (iconRef.isEmpty) {
         skippedMissingIcon++;
-        if (kDebugMode) {
-          debugPrint(
-            '[StorySetupCatalogRepository] skip "$name/${doc.id}" source=$sourceLabel: missing iconUrl/iconPath',
-          );
-        }
         continue;
       }
 

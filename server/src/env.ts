@@ -26,6 +26,13 @@ const EnvSchema = z.object({
   VERTEX_LOCATION: z.string().default('us-central1'),
   GEMINI_MODEL: z.string().default('gemini-1.5-flash'),
 
+  // Firebase Storage
+  STORAGE_BUCKET: z.string().optional(), // defaults to "<projectId>.appspot.com"
+
+  // Vertex AI image generation (Imagen)
+  VERTEX_IMAGE_MODEL: z.string().optional(), // defaults to "imagen-3.0-generate-001"
+  IMAGE_SIGNED_URL_DAYS: z.string().optional(), // defaults to 30
+
   // Policy / limits
   KILL_SWITCH: z.string().optional(),
   MAX_INPUT_CHARS: z.string().optional(),
@@ -50,6 +57,9 @@ export type Env = {
   appCheckRequired: boolean;
   vertexLocation: string;
   geminiModel: string;
+  storageBucket: string;
+  vertexImageModel: string;
+  imageSignedUrlDays: number;
   killSwitch: boolean;
   maxInputChars: number;
   maxOutputChars: number;
@@ -66,6 +76,7 @@ export function readEnv(processEnv: NodeJS.ProcessEnv): Env {
   const parsed = EnvSchema.parse(processEnv);
 
   const projectId = (parsed.FIREBASE_PROJECT_ID ?? parsed.GOOGLE_CLOUD_PROJECT).trim();
+  const storageBucket = (parsed.STORAGE_BUCKET ?? `${projectId}.appspot.com`).trim();
 
   return {
     port: Number(parsed.PORT ?? '8080'),
@@ -75,6 +86,9 @@ export function readEnv(processEnv: NodeJS.ProcessEnv): Env {
     appCheckRequired: boolFromString(parsed.APPCHECK_REQUIRED, true),
     vertexLocation: parsed.VERTEX_LOCATION,
     geminiModel: parsed.GEMINI_MODEL,
+    storageBucket,
+    vertexImageModel: (parsed.VERTEX_IMAGE_MODEL ?? 'imagen-3.0-generate-001').trim(),
+    imageSignedUrlDays: Number(parsed.IMAGE_SIGNED_URL_DAYS ?? '30'),
     killSwitch: boolFromString(parsed.KILL_SWITCH, false),
     maxInputChars: Number(parsed.MAX_INPUT_CHARS ?? '1200'),
     maxOutputChars: Number(parsed.MAX_OUTPUT_CHARS ?? '12000'),

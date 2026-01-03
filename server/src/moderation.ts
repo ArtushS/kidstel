@@ -10,6 +10,10 @@ const BANNED_PATTERNS: Array<{ re: RegExp; reason: string }> = [
   { re: /\b(drugs?|cocaine|heroin|meth|weed|marijuana)\b/i, reason: 'drugs' },
   { re: /\b(gun|knife|stab|shoot|blood|gore)\b/i, reason: 'violence' },
   { re: /\b(hate\s+speech|nazi|kkk)\b/i, reason: 'hate/extremism' },
+  // Keep kids' stories away from politics / real-world conflicts.
+  { re: /\b(election|vote|president|prime\s+minister|democrat|republican|parliament)\b/i, reason: 'politics' },
+  // Real persons / celebrities (non-exhaustive, conservative).
+  { re: /\b(trump|biden|putin|hitler|obama)\b/i, reason: 'real person' },
 ];
 
 export function moderateText(text: string, maxChars: number): ModerationResult {

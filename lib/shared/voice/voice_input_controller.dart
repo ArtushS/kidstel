@@ -114,9 +114,6 @@ class VoiceInputController extends ChangeNotifier {
           notifyListeners();
         },
         onStatus: (status) {
-          if (kDebugMode) {
-            debugPrint('STT status: $status');
-          }
           // statuses: listening, notListening, done
           final nowListening = status == 'listening';
           if (_isListening != nowListening) {
@@ -126,6 +123,9 @@ class VoiceInputController extends ChangeNotifier {
           if (status == 'notListening' || status == 'done') {
             _isListening = false;
             _sessionEndReason = 'status:$status';
+            if (kDebugMode) {
+              debugPrint('STT ended: $status');
+            }
             if (_endCompleter != null && !_endCompleter!.isCompleted) {
               _endCompleter!.complete();
             }
@@ -139,9 +139,7 @@ class VoiceInputController extends ChangeNotifier {
         try {
           _locales = await _speech.locales();
           if (kDebugMode) {
-            debugPrint(
-              'STT locales: ${_locales.map((e) => e.localeId).join(', ')}',
-            );
+            debugPrint('STT locales loaded: count=${_locales.length}');
           }
         } catch (e) {
           // Locale discovery is best-effort; keep STT usable.
@@ -360,7 +358,10 @@ class VoiceInputController extends ChangeNotifier {
         final words = res.recognizedWords.toString().trim();
 
         if (kDebugMode) {
-          debugPrint('STT onResult final=${res.finalResult} words="$words"');
+          // Never log recognized words (can contain user content).
+          debugPrint(
+            'STT onResult: final=${res.finalResult} len=${words.length}',
+          );
         }
 
         if (res.finalResult) {

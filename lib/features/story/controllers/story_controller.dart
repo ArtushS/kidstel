@@ -383,7 +383,11 @@ class StoryController extends ChangeNotifier {
         // Backend expects selection.style; we store only StoryType in session.
         'style': _session.storyType,
       },
-      'choice': {'id': choice.id, 'payload': choice.payload},
+      'choice': {
+        'id': choice.id,
+        'label': choice.label,
+        'payload': choice.payload,
+      },
     };
 
     _lastRequestBody = Map<String, dynamic>.from(body);
@@ -625,18 +629,15 @@ class StoryController extends ChangeNotifier {
       final url = (result.url ?? '').trim();
       final bytes = result.bytes;
 
-      _imgLog(
-        'success',
-        data: {
-          'chapterIndex': last.chapterIndex,
-          'hasUrl': url.isNotEmpty,
-          'bytesLen': bytes?.length ?? 0,
-          if (url.isNotEmpty)
-            'urlPrefix': url.substring(0, url.length.clamp(0, 32)),
-        },
-      );
-
       if (bytes != null && bytes.isNotEmpty) {
+        _imgLog(
+          'success',
+          data: {
+            'chapterIndex': last.chapterIndex,
+            'hasUrl': false,
+            'bytesLen': bytes.length,
+          },
+        );
         _state = _state.copyWith(
           illustrationStatus: IllustrationStatus.ready,
           illustrationUrl: null,
@@ -648,10 +649,35 @@ class StoryController extends ChangeNotifier {
       }
 
       if (url.isEmpty) {
-        throw FormatException(
-          'Image generation returned neither url nor bytes',
+        _imgLog(
+          'empty result',
+          data: {
+            'chapterIndex': last.chapterIndex,
+            'hasUrl': false,
+            'bytesLen': 0,
+          },
         );
+
+        // Soft failure: keep status=error so UI shows retry, but don't throw.
+        _state = _state.copyWith(
+          illustrationStatus: IllustrationStatus.error,
+          illustrationUrl: null,
+          illustrationBytes: null,
+          lastUpdated: _now(),
+        );
+        notifyListeners();
+        return;
       }
+
+      _imgLog(
+        'success',
+        data: {
+          'chapterIndex': last.chapterIndex,
+          'hasUrl': true,
+          'bytesLen': 0,
+          'urlPrefix': url.substring(0, url.length.clamp(0, 32)),
+        },
+      );
 
       // Persist URL into the last chapter (for restore).
       final chapters = [..._state.chapters];
@@ -688,30 +714,31 @@ class StoryController extends ChangeNotifier {
         stackTrace: st,
       );
 
-      if (_devIllustrationFallbackEnabled) {
-        final bytes = await _buildDevFallbackBytes();
-
-        // Keep status=error so the user still has a visible "Try again" action,
-        // while we still show a deterministic image in DEV/TEST.
-        _state = _state.copyWith(
-          illustrationStatus: IllustrationStatus.error,
-          illustrationUrl: null,
-          illustrationBytes: bytes,
-          lastUpdated: _now(),
-        );
-        notifyListeners();
-
-        unawaited(saveToLibrary());
-        return;
+      // Always show a deterministic placeholder so the UI never crashes
+      // or renders an empty illustration box in production.
+      //
+      // Keep status=error so the user still has a visible "Try again" action.
+      Uint8List? bytes;
+      try {
+        if (_devIllustrationFallbackEnabled) {
+          bytes = await _buildDevFallbackBytes();
+        } else {
+          // In release, still generate a lightweight placeholder.
+          bytes = await _buildDevFallbackBytes();
+        }
+      } catch (_) {
+        bytes = null;
       }
 
       _state = _state.copyWith(
         illustrationStatus: IllustrationStatus.error,
         illustrationUrl: null,
-        illustrationBytes: null,
+        illustrationBytes: bytes,
         lastUpdated: _now(),
       );
       notifyListeners();
+
+      unawaited(saveToLibrary());
     }
   }
 

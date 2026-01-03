@@ -117,6 +117,10 @@ class AppSettings {
 
   final bool autoIllustrations;
 
+  // TODO(admin): Support remote admin policy overrides (e.g. AdminPolicyConfig)
+  // for feature flags/limits like autoIllustrations and interactive stories.
+  // Keep overrides separate from user preferences for backward compatibility.
+
   /// DEV/TEST-only behavior: when enabled, illustration generation failures
   /// should fall back to a deterministic placeholder image.
   ///
