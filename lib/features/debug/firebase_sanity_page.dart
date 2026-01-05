@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../story/services/story_service.dart';
 
 const String _storageBucket = 'gs://kids-tell-d0ks8m.firebasestorage.app';
 
@@ -16,7 +19,74 @@ class _FirebaseSanityPageState extends State<FirebaseSanityPage> {
   bool _busy = false;
   String _lastResult = '';
 
+  Future<String?> _getSanitySeedStoryId(User u) async {
+    // Preferred: provide an existing storyId via build-time define.
+    // Example:
+    //   flutter run --dart-define=SANITY_SEED_STORY_ID=story_test
+    const seed = String.fromEnvironment(
+      'SANITY_SEED_STORY_ID',
+      defaultValue: '',
+    );
+    final seedTrim = seed.trim();
+    if (seedTrim.isNotEmpty) return seedTrim;
+
+    // Fallback: best-effort create a minimal seed story document directly in Firestore.
+    // This avoids calling the agent with an empty generate request.
+    try {
+      final storyId =
+          'sanity_${u.uid}_${DateTime.now().millisecondsSinceEpoch}';
+      final doc = FirebaseFirestore.instance.collection('stories').doc(storyId);
+
+      await doc.set({
+        'storyId': storyId,
+        'uid': u.uid,
+        'title': 'Sanity seed story',
+        'lang': 'en',
+        'ageGroup': '3_5',
+        'storyLength': 'short',
+        'creativityLevel': 0.5,
+        'hero': 'Cat',
+        'location': 'Park',
+        'style': 'Adventure',
+        'idea': 'Sanity seed',
+        'policyVersion': 'sanity',
+        'latestChapterIndex': 0,
+        'chapters': [
+          {
+            'chapterIndex': 0,
+            'title': 'Chapter 1',
+            'text': 'Once upon a time, this is a sanity seed chapter.',
+            'progress': 0.1,
+            'choices': <Map<String, dynamic>>[],
+          },
+        ],
+        'updatedAt': FieldValue.serverTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      return storyId;
+    } catch (e) {
+      debugPrint('[Sanity][AGENT] Sanity skipped: no seed story ($e)');
+      return null;
+    }
+  }
+
   User? get _user => FirebaseAuth.instance.currentUser;
+
+  bool _validateIllustrateInputs({
+    required String prompt,
+    required int? chapterIndex,
+  }) {
+    if (prompt.trim().isEmpty) {
+      _snack('Prompt is required for illustration.');
+      return false;
+    }
+    if (chapterIndex == null) {
+      _snack('Chapter index is required for illustration.');
+      return false;
+    }
+    return true;
+  }
 
   void _snack(String msg) {
     if (!mounted) return;
@@ -104,6 +174,52 @@ class _FirebaseSanityPageState extends State<FirebaseSanityPage> {
         'OK:\n${ok.join('\n')}\n\n'
         'MISSING:\n${missing.join('\n')}\n\n'
         'OTHER ERRORS:\n${otherErr.join('\n')}';
+  }
+
+  String _header(AgentHttpResult r, String name) {
+    return (r.headers[name.toLowerCase()] ?? '').trim();
+  }
+
+  String _keysPreview(Object? json) {
+    if (json is Map) {
+      return json.keys.map((e) => e.toString()).take(32).join(',');
+    }
+    if (json is List) return 'list(len=${json.length})';
+    if (json == null) return '(null)';
+    return json.runtimeType.toString();
+  }
+
+  String _formatAgentResult(String label, AgentHttpResult r) {
+    final m = r.jsonMap;
+    Object? getKey(String key) => m == null ? null : m[key];
+
+    final image = getKey('image');
+    final imageKeys = image is Map ? image.keys.take(24).join(',') : '';
+
+    final debugObj = getKey('debug');
+    final debug = debugObj is Map ? debugObj : null;
+
+    return 'Agent: $label\n'
+        'HTTP ${r.statusCode} ok=${r.ok}\n'
+        'requestUrl: ${r.requestUrl}\n'
+        'action: ${r.action}\n'
+        'x-kidstel-rev: ${_header(r, 'x-kidstel-rev')}\n'
+        'x-kidstel-service: ${_header(r, 'x-kidstel-service')}\n'
+        'x-kidstel-action: ${_header(r, 'x-kidstel-action')}\n'
+        'x-kidstel-blocked: ${_header(r, 'x-kidstel-blocked')}\n'
+        'x-kidstel-block-reason: ${_header(r, 'x-kidstel-block-reason')}\n'
+        'x-k-revision: ${_header(r, 'x-k-revision')}\n'
+        'contentLenBytes: ${r.bodyBytesLength}\n\n'
+        'jsonType: ${r.json?.runtimeType}\n'
+        'jsonKeys: ${_keysPreview(r.json)}\n'
+        'requestId: ${getKey('requestId')}\n'
+        'storyId: ${getKey('storyId')}\n'
+        'chapterIndex: ${getKey('chapterIndex')}\n'
+        'debug.revision: ${debug == null ? null : debug['revision']}\n'
+        'debug.service: ${debug == null ? null : debug['service']}\n'
+        'hasImage: ${image != null}\n'
+        '${imageKeys.isEmpty ? '' : 'imageKeys: $imageKeys\n'}'
+        '${(r.textPreview ?? '').isEmpty ? '' : '\ntextPreview:\n${r.textPreview}'}';
   }
 
   @override
@@ -238,6 +354,141 @@ class _FirebaseSanityPageState extends State<FirebaseSanityPage> {
                   }),
             icon: const Icon(Icons.person_outline),
             label: const Text('GET Storage URL (user path sample)'),
+          ),
+          const SizedBox(height: 16),
+          Text('Story agent', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            onPressed: _busy
+                ? null
+                : () => _run('AGENT illustrate (valid prompt)', (u) async {
+                    final service = context.read<StoryService>();
+                    const prompt = 'A friendly cat smiling at the camera.';
+                    const chapterIndex = 0;
+
+                    if (!_validateIllustrateInputs(
+                      prompt: prompt,
+                      chapterIndex: chapterIndex,
+                    )) {
+                      return 'Skipped: invalid illustrate input';
+                    }
+
+                    final storyId = await _getSanitySeedStoryId(u);
+                    if (storyId == null) {
+                      debugPrint(
+                        '[Sanity][AGENT] Sanity skipped: no seed story',
+                      );
+                      return 'Skipped sanity illustrate: no storyId';
+                    }
+
+                    final body = <String, dynamic>{
+                      'action': 'illustrate',
+                      'meta': {'userInitiated': true},
+                      'storyId': storyId,
+                      'storyLang': 'en',
+                      'chapterIndex': chapterIndex,
+                      'prompt': prompt,
+                    };
+
+                    final result = await service.callAgentHttp(body);
+
+                    final jsonMap = result.jsonMap;
+                    final debugMap =
+                        (jsonMap != null && jsonMap['debug'] is Map)
+                        ? jsonMap['debug'] as Map
+                        : null;
+                    final debugRevision = debugMap == null
+                        ? null
+                        : debugMap['revision'];
+
+                    // Also print a one-liner to logs for easy copy/paste.
+                    debugPrint(
+                      '[Sanity][AGENT] valid_prompt status=${result.statusCode} '
+                      'url=${result.requestUrl} action=${result.action} '
+                      'x-k-revision=${_header(result, 'x-k-revision')} '
+                      'debug.revision=$debugRevision',
+                    );
+
+                    if (result.statusCode >= 400) {
+                      debugPrint(
+                        '[Sanity][AGENT][ERR] valid_prompt status=${result.statusCode} '
+                        'body=${result.textPreview ?? result.json}',
+                      );
+                    }
+
+                    return _formatAgentResult(
+                      'illustrate valid prompt',
+                      result,
+                    );
+                  }),
+            icon: const Icon(Icons.image_not_supported_outlined),
+            label: const Text('ILLUSTRATE: valid prompt'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _busy
+                ? null
+                : () => _run('AGENT illustrate (with chapterIndex)', (u) async {
+                    final service = context.read<StoryService>();
+                    const prompt = 'A brave hero in a sunny forest.';
+                    const chapterIndex = 1;
+
+                    if (!_validateIllustrateInputs(
+                      prompt: prompt,
+                      chapterIndex: chapterIndex,
+                    )) {
+                      return 'Skipped: invalid illustrate input';
+                    }
+
+                    final storyId = await _getSanitySeedStoryId(u);
+                    if (storyId == null) {
+                      debugPrint(
+                        '[Sanity][AGENT] Sanity skipped: no seed story',
+                      );
+                      return 'Skipped sanity illustrate: no storyId';
+                    }
+
+                    final body = <String, dynamic>{
+                      'action': 'illustrate',
+                      'meta': {'userInitiated': true},
+                      'storyId': storyId,
+                      'storyLang': 'en',
+                      'chapterIndex': chapterIndex,
+                      'prompt': prompt,
+                    };
+
+                    final result = await service.callAgentHttp(body);
+
+                    final jsonMap = result.jsonMap;
+                    final debugMap =
+                        (jsonMap != null && jsonMap['debug'] is Map)
+                        ? jsonMap['debug'] as Map
+                        : null;
+                    final debugRevision = debugMap == null
+                        ? null
+                        : debugMap['revision'];
+
+                    debugPrint(
+                      '[Sanity][AGENT] chapterIndex status=${result.statusCode} '
+                      'url=${result.requestUrl} action=${result.action} '
+                      'x-k-revision=${_header(result, 'x-k-revision')} '
+                      'debug.revision=$debugRevision',
+                    );
+
+                    if (result.statusCode >= 400) {
+                      debugPrint(
+                        '[Sanity][AGENT][ERR] chapterIndex status=${result.statusCode} '
+                        'body=${result.textPreview ?? result.json}',
+                      );
+                    }
+
+                    return _formatAgentResult(
+                      'illustrate with chapterIndex',
+                      result,
+                    );
+                  }),
+            icon: const Icon(Icons.remove_circle_outline),
+            label: const Text('ILLUSTRATE: with chapterIndex'),
           ),
           const SizedBox(height: 16),
           Text('Result', style: Theme.of(context).textTheme.titleMedium),

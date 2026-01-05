@@ -9,8 +9,21 @@ const ShortText = z.string().trim().max(200);
 const MediumText = z.string().trim().max(1200);
 const LongText = z.string().trim().max(12000);
 
+const RequestMetaSchema = z
+  .object({
+    // Used to distinguish explicit user actions from background/auto behavior.
+    userInitiated: z.boolean().optional(),
+  })
+  // IMPORTANT: allow forward-compatible keys.
+  // Some clients may attach diagnostic/meta fields that older servers shouldn't reject.
+  .passthrough();
+
 export const CreateRequestSchema = z.object({
   requestId: z.string().trim().max(64).optional(),
+  meta: RequestMetaSchema.optional(),
+  // Optional: allows clients to send storyId for sanity/compat flows.
+  // The create handler may ignore it.
+  storyId: SafeId.optional(),
   ageGroup: AgeGroupSchema.optional(),
   storyLang: LangSchema.optional(),
   storyLength: StoryLengthSchema.optional(),
@@ -23,6 +36,8 @@ export const CreateRequestSchema = z.object({
     style: ShortText.optional(),
   }).strict().optional(),
   idea: MediumText.optional(),
+  // Optional alias for idea (some clients use `prompt` for the initial request).
+  prompt: MediumText.optional(),
 
   // Backward-compat: existing client sends {action: 'generate', ...}
   action: z.literal('generate').optional(),
@@ -30,6 +45,7 @@ export const CreateRequestSchema = z.object({
 
 export const ContinueRequestSchema = z.object({
   requestId: z.string().trim().max(64).optional(),
+  meta: RequestMetaSchema.optional(),
   storyId: SafeId,
   chapterIndex: z.number().int().min(0).max(99).optional(),
   choice: z.object({
@@ -57,11 +73,24 @@ export const ContinueRequestSchema = z.object({
   action: z.literal('continue').optional(),
 }).strict();
 
+const ImageSizeSchema = z.enum(['1080x1080', '1280x720']);
+const ImageAspectRatioSchema = z.enum(['1:1', '16:9']);
+
 export const IllustrateRequestSchema = z.object({
   action: z.literal('illustrate').optional(),
   requestId: z.string().trim().max(64).optional(),
+  meta: RequestMetaSchema.optional(),
   storyId: SafeId,
   storyLang: LangSchema.optional(),
+  ageGroup: AgeGroupSchema.optional(),
+  image: z
+    .object({
+      size: ImageSizeSchema.optional(),
+      aspectRatio: ImageAspectRatioSchema.optional(),
+      style: z.string().trim().max(64).optional(),
+    })
+    .strict()
+    .optional(),
   chapterIndex: z.number().int().min(0).max(99),
   prompt: MediumText.min(1),
 }).strict();

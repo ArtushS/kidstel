@@ -19,7 +19,7 @@ class StoryController extends ChangeNotifier {
   final ImageGenerationService _imageGeneration;
 
   final bool _interactiveStoriesEnabled;
-  final bool _autoIllustrationsEnabled;
+  bool _autoIllustrationsEnabled;
   final bool _devIllustrationFallbackEnabled;
 
   /// DEV/TEST fallback illustration bytes.
@@ -71,7 +71,14 @@ class StoryController extends ChangeNotifier {
   Map<String, dynamic>? _lastRequestBody;
 
   bool _readingStarted = false;
-  Timer? _illustrationDebounce;
+
+  // Illustration polling (single-flight per storyId/chapterIndex).
+  Timer? _illustrationPollTimer;
+  String? _illustrationPollKey;
+  DateTime? _illustrationPollStartedAt;
+  int _illustrationPollAttempt = 0;
+  bool _illustrationAttemptInFlight = false;
+  bool _illustrationUserInitiated = false;
 
   StoryController({
     required StoryService storyService,
@@ -86,6 +93,27 @@ class StoryController extends ChangeNotifier {
        _interactiveStoriesEnabled = interactiveStoriesEnabled,
        _autoIllustrationsEnabled = autoIllustrationsEnabled,
        _devIllustrationFallbackEnabled = devIllustrationFallbackEnabled;
+
+  void setAutoIllustrationsEnabled(bool enabled) {
+    if (_autoIllustrationsEnabled == enabled) return;
+    _autoIllustrationsEnabled = enabled;
+
+    _imgLog('auto illustrations setting changed', data: {'enabled': enabled});
+
+    if (!enabled) {
+      _cancelIllustrationPolling(reason: 'settings_off');
+      _state = _state.copyWith(
+        illustrationStatus: IllustrationStatus.idle,
+        illustrationUrl: null,
+        illustrationBytes: null,
+        lastUpdated: _now(),
+      );
+      notifyListeners();
+      return;
+    }
+
+    _maybeStartIllustrationPolling(reason: 'settings_on');
+  }
 
   void _imgLog(
     String message, {
@@ -213,6 +241,14 @@ class StoryController extends ChangeNotifier {
     return body;
   }
 
+  bool _shouldSkipGenerateRequest(Map<String, dynamic> body) {
+    final storyId = (body['storyId'] ?? '').toString().trim();
+    final idea = (body['idea'] ?? '').toString().trim();
+    final prompt = (body['prompt'] ?? '').toString().trim();
+    // Client contract: do not send empty generate requests.
+    return storyId.isEmpty && idea.isEmpty && prompt.isEmpty;
+  }
+
   /// Starts a brand-new story using the current session settings.
   ///
   /// This keeps the user on the StoryReader page.
@@ -223,8 +259,14 @@ class StoryController extends ChangeNotifier {
       return;
     }
 
+    final body = _buildGenerateBody();
+    if (_shouldSkipGenerateRequest(body)) {
+      debugPrint('[StoryController] Skip generate: no input');
+      return;
+    }
+
     _readingStarted = false;
-    _illustrationDebounce?.cancel();
+    _cancelIllustrationPolling(reason: 'new_story');
 
     final localId = _ensureStoryId('');
     _state = StoryState.empty().copyWith(
@@ -241,7 +283,6 @@ class StoryController extends ChangeNotifier {
     // Make the new story visible in "My Stories" immediately.
     unawaited(saveToLibrary());
 
-    final body = _buildGenerateBody();
     _lastRequestBody = Map<String, dynamic>.from(body);
 
     await _runRequest(
@@ -254,19 +295,50 @@ class StoryController extends ChangeNotifier {
   void markReadingStarted() {
     if (_readingStarted) return;
     _readingStarted = true;
-    _scheduleIllustrationIfNeeded();
   }
 
-  void _scheduleIllustrationIfNeeded() {
-    if (!_autoIllustrationsEnabled) return;
-    if (!_session.imageEnabled) return;
-    if (_state.chapters.isEmpty) return;
+  String _pollKeyFor(String storyId, int chapterIndex) =>
+      '${storyId.trim()}:$chapterIndex';
 
-    // Debounce so we don't spam if user scrolls rapidly.
-    _illustrationDebounce?.cancel();
-    _illustrationDebounce = Timer(const Duration(milliseconds: 700), () {
-      unawaited(generateIllustration());
-    });
+  Duration _pollDelayForAttempt(int attempt) {
+    // Backoff: 2s, 3s, 5s, 8s, 13s, 21s, then cap at 30s.
+    const seq = <int>[2, 3, 5, 8, 13, 21];
+    if (attempt <= 0) return const Duration(seconds: 2);
+    if (attempt < seq.length) return Duration(seconds: seq[attempt]);
+    return const Duration(seconds: 30);
+  }
+
+  void _cancelIllustrationPolling({required String reason}) {
+    final prevKey = _illustrationPollKey;
+    final prevAttempt = _illustrationPollAttempt;
+    _illustrationPollTimer?.cancel();
+    _illustrationPollTimer = null;
+    _illustrationPollKey = null;
+    _illustrationPollStartedAt = null;
+    _illustrationPollAttempt = 0;
+    _illustrationAttemptInFlight = false;
+    _illustrationUserInitiated = false;
+    _imgLog(
+      'cancelled',
+      data: {
+        'reason': reason,
+        if (prevKey != null) 'key': prevKey,
+        'attempt': prevAttempt,
+      },
+    );
+  }
+
+  void _maybeStartIllustrationPolling({required String reason}) {
+    // IMPORTANT: Illustration generation must be user-initiated.
+    // We keep this hook for compatibility with old call sites, but it no-ops.
+    _imgLog(
+      'auto illustration suppressed',
+      data: {
+        'reason': reason,
+        'storyId': _state.storyId,
+        'hasChapters': _state.chapters.isNotEmpty,
+      },
+    );
   }
 
   Future<void> startStory({StoryReaderArgs? args}) async {
@@ -284,12 +356,15 @@ class StoryController extends ChangeNotifier {
       return;
     }
 
+    _cancelIllustrationPolling(reason: 'start_story');
+
     _session = StorySession(
       ageGroup: args.ageGroup,
       storyLang: args.storyLang,
       storyLength: args.storyLength,
       creativityLevel: args.creativityLevel,
-      imageEnabled: args.imageEnabled && _autoIllustrationsEnabled,
+      // Per-story intent. Global toggle is tracked separately.
+      imageEnabled: args.imageEnabled,
       interactiveEnabled: _interactiveStoriesEnabled,
       hero: args.hero,
       location: args.location,
@@ -320,6 +395,11 @@ class StoryController extends ChangeNotifier {
 
     // Fallback: generate inside reader.
     final body = _buildGenerateBody();
+
+    if (_shouldSkipGenerateRequest(body)) {
+      debugPrint('[StoryController] Skip generate: no input');
+      return;
+    }
 
     _lastRequestBody = Map<String, dynamic>.from(body);
 
@@ -441,11 +521,20 @@ class StoryController extends ChangeNotifier {
       onSuccess(resp);
     } catch (e) {
       debugPrint('Story request failed: $e');
+
+      final userMsg =
+          (e is StoryServiceDailyLimitException ||
+              e is StoryServiceCooldownException)
+          ? e.toString()
+          : null;
+
       _state = _state.copyWith(
         isLoading: false,
-        error: errorPrefix == null
-            ? _genericErrorMessage()
-            : '$errorPrefix${_genericErrorMessage()}',
+        error:
+            userMsg ??
+            (errorPrefix == null
+                ? _genericErrorMessage()
+                : '$errorPrefix${_genericErrorMessage()}'),
         lastUpdated: _now(),
       );
       notifyListeners();
@@ -456,6 +545,7 @@ class StoryController extends ChangeNotifier {
     GenerateStoryResponse resp, {
     required bool replace,
   }) {
+    _cancelIllustrationPolling(reason: 'chapter_changed');
     final prevId = _state.storyId;
     final chapter = StoryChapter.fromAgentResponse(resp);
     _agentImageMetaLog(stage: 'after-chapter-map', chapter: chapter);
@@ -500,12 +590,11 @@ class StoryController extends ChangeNotifier {
 
     unawaited(saveToLibrary());
 
-    if (_readingStarted) {
-      _scheduleIllustrationIfNeeded();
-    }
+    _maybeStartIllustrationPolling(reason: 'new_chapter');
   }
 
   void _appendAgentResponse(GenerateStoryResponse resp) {
+    _cancelIllustrationPolling(reason: 'chapter_changed');
     final prevId = _state.storyId;
     final chapter = StoryChapter.fromAgentResponse(resp);
     _agentImageMetaLog(stage: 'after-chapter-map', chapter: chapter);
@@ -554,59 +643,101 @@ class StoryController extends ChangeNotifier {
 
     unawaited(saveToLibrary());
 
-    if (_readingStarted) {
-      _scheduleIllustrationIfNeeded();
-    }
+    _maybeStartIllustrationPolling(reason: 'continued_chapter');
   }
 
   /// Generates (or re-generates) the illustration for the current chapter.
   ///
   /// This should typically be triggered automatically after reading begins.
   Future<void> generateIllustration({bool force = false}) async {
-    if (!_autoIllustrationsEnabled) {
-      _imgLog('skip: auto illustrations disabled');
+    final userInitiated = force;
+    if (!userInitiated && !_illustrationUserInitiated) {
+      _imgLog('skip: illustration not user-initiated');
       return;
     }
-    if (!_session.imageEnabled) {
-      _imgLog('skip: session image disabled');
-      return;
+
+    // If user explicitly asked for an image, allow it regardless of the
+    // global toggle and remember the per-story intent.
+    if (userInitiated && !_session.imageEnabled) {
+      _session = StorySession(
+        ageGroup: _session.ageGroup,
+        storyLang: _session.storyLang,
+        storyLength: _session.storyLength,
+        creativityLevel: _session.creativityLevel,
+        imageEnabled: true,
+        interactiveEnabled: _session.interactiveEnabled,
+        hero: _session.hero,
+        location: _session.location,
+        storyType: _session.storyType,
+        idea: _session.idea,
+      );
+      _state = _state.copyWith(session: _session, lastUpdated: _now());
+      notifyListeners();
+    }
+
+    if (userInitiated) {
+      _illustrationUserInitiated = true;
     }
     if (_state.chapters.isEmpty) {
       _imgLog('skip: no chapters');
       return;
     }
 
-    final status = _state.illustrationStatus;
-    if (!force &&
-        (status == IllustrationStatus.loading ||
-            status == IllustrationStatus.ready)) {
+    final last = _state.chapters.last;
+    final storyId = _state.storyId.trim();
+    final pollKey = _pollKeyFor(storyId, last.chapterIndex);
+
+    if (force) {
+      _cancelIllustrationPolling(reason: 'force_retry');
+      _illustrationUserInitiated = true;
+    }
+
+    if (_illustrationAttemptInFlight) {
       _imgLog(
-        'skip: already in progress/ready',
-        data: {'force': force, 'status': status.name},
+        'skip: attempt already in flight',
+        data: {
+          'storyId': storyId,
+          'chapterIndex': last.chapterIndex,
+          'force': force,
+        },
       );
       return;
     }
 
-    final last = _state.chapters.last;
-    final existingUrl = last.imageUrl;
+    // Reset polling state if target changed.
+    if (_illustrationPollKey != null && _illustrationPollKey != pollKey) {
+      _cancelIllustrationPolling(reason: 'target_changed');
+    }
+
+    // If we're already ready and not forcing, do nothing.
+    if (!force && _state.illustrationStatus == IllustrationStatus.ready) {
+      return;
+    }
+
+    _illustrationPollKey ??= pollKey;
+    _illustrationPollStartedAt ??= _now();
+
+    final existingUrl = (last.imageUrl ?? '').trim();
     final prompt = _buildIllustrationPrompt(last);
 
     _imgLog(
-      'start',
+      'poll start',
       data: {
         'force': force,
-        'storyId': _state.storyId,
+        'storyId': storyId,
         'chapterIndex': last.chapterIndex,
         'promptLen': prompt.length,
-        'hasExistingUrl': (existingUrl ?? '').trim().isNotEmpty,
+        'hasExistingUrl': existingUrl.isNotEmpty,
+        'attempt': _illustrationPollAttempt,
       },
     );
 
-    if (!force && existingUrl != null && existingUrl.trim().isNotEmpty) {
-      final v = existingUrl.trim();
+    // If a URL is already persisted on the chapter, treat it as ready.
+    if (!force && existingUrl.isNotEmpty) {
+      _cancelIllustrationPolling(reason: 'existing_url');
       _state = _state.copyWith(
         illustrationStatus: IllustrationStatus.ready,
-        illustrationUrl: v,
+        illustrationUrl: existingUrl,
         illustrationPrompt: prompt,
         lastUpdated: _now(),
       );
@@ -614,6 +745,7 @@ class StoryController extends ChangeNotifier {
       return;
     }
 
+    // Always show loading during polling.
     _state = _state.copyWith(
       illustrationStatus: IllustrationStatus.loading,
       illustrationUrl: null,
@@ -623,21 +755,28 @@ class StoryController extends ChangeNotifier {
     );
     notifyListeners();
 
+    const maxElapsed = Duration(seconds: 90);
+    const maxAttempts = 12;
+
     try {
+      _illustrationAttemptInFlight = true;
       final result = await _imageGeneration.generateImage(story: _state);
+      _illustrationAttemptInFlight = false;
 
       final url = (result.url ?? '').trim();
       final bytes = result.bytes;
 
       if (bytes != null && bytes.isNotEmpty) {
         _imgLog(
-          'success',
+          'success -> stop',
           data: {
             'chapterIndex': last.chapterIndex,
             'hasUrl': false,
             'bytesLen': bytes.length,
           },
         );
+
+        _cancelIllustrationPolling(reason: 'success');
         _state = _state.copyWith(
           illustrationStatus: IllustrationStatus.ready,
           illustrationUrl: null,
@@ -648,17 +787,66 @@ class StoryController extends ChangeNotifier {
         return;
       }
 
-      if (url.isEmpty) {
+      if (url.isNotEmpty) {
         _imgLog(
-          'empty result',
+          'success -> stop',
           data: {
             'chapterIndex': last.chapterIndex,
-            'hasUrl': false,
+            'hasUrl': true,
             'bytesLen': 0,
+            'urlPrefix': url.substring(0, url.length.clamp(0, 32)),
           },
         );
 
-        // Soft failure: keep status=error so UI shows retry, but don't throw.
+        _cancelIllustrationPolling(reason: 'success');
+
+        // Persist URL into the last chapter (for restore).
+        final chapters = [..._state.chapters];
+        final lastChapter = chapters.last;
+        chapters[chapters.length - 1] = StoryChapter(
+          chapterIndex: lastChapter.chapterIndex,
+          title: lastChapter.title,
+          text: lastChapter.text,
+          progress: lastChapter.progress,
+          imageUrl: url,
+          choices: lastChapter.choices,
+        );
+
+        _state = _state.copyWith(
+          chapters: chapters,
+          illustrationStatus: IllustrationStatus.ready,
+          illustrationUrl: url,
+          illustrationBytes: null,
+          lastUpdated: _now(),
+        );
+        notifyListeners();
+        unawaited(saveToLibrary());
+        return;
+      }
+
+      // Empty result: keep loading and poll again.
+      _imgLog(
+        'empty result -> schedule next',
+        data: {
+          'storyId': storyId,
+          'chapterIndex': last.chapterIndex,
+          'attempt': _illustrationPollAttempt,
+        },
+      );
+
+      final startedAt = _illustrationPollStartedAt ?? _now();
+      final elapsed = _now().difference(startedAt);
+      if (elapsed >= maxElapsed || _illustrationPollAttempt >= maxAttempts) {
+        _imgLog(
+          'polling timeout',
+          data: {
+            'storyId': storyId,
+            'chapterIndex': last.chapterIndex,
+            'attempt': _illustrationPollAttempt,
+            'elapsedMs': elapsed.inMilliseconds,
+          },
+        );
+        _cancelIllustrationPolling(reason: 'timeout');
         _state = _state.copyWith(
           illustrationStatus: IllustrationStatus.error,
           illustrationUrl: null,
@@ -669,61 +857,69 @@ class StoryController extends ChangeNotifier {
         return;
       }
 
+      final delay = _pollDelayForAttempt(_illustrationPollAttempt);
+      _illustrationPollAttempt += 1;
       _imgLog(
-        'success',
+        'poll scheduled',
         data: {
+          'storyId': storyId,
           'chapterIndex': last.chapterIndex,
-          'hasUrl': true,
-          'bytesLen': 0,
-          'urlPrefix': url.substring(0, url.length.clamp(0, 32)),
+          'attempt': _illustrationPollAttempt,
+          'delayMs': delay.inMilliseconds,
         },
       );
 
-      // Persist URL into the last chapter (for restore).
-      final chapters = [..._state.chapters];
-      final lastChapter = chapters.last;
-      chapters[chapters.length - 1] = StoryChapter(
-        chapterIndex: lastChapter.chapterIndex,
-        title: lastChapter.title,
-        text: lastChapter.text,
-        progress: lastChapter.progress,
-        imageUrl: url,
-        choices: lastChapter.choices,
-      );
-
-      _state = _state.copyWith(
-        chapters: chapters,
-        illustrationStatus: IllustrationStatus.ready,
-        illustrationUrl: url,
-        illustrationBytes: null,
-        lastUpdated: _now(),
-      );
-      notifyListeners();
-
-      // Persist updated story with the illustration.
-      unawaited(saveToLibrary());
+      _illustrationPollTimer?.cancel();
+      _illustrationPollTimer = Timer(delay, () {
+        if (!_illustrationUserInitiated) return;
+        // Only continue if we are still on the same chapter.
+        if (_state.chapters.isEmpty) return;
+        final curLast = _state.chapters.last;
+        final curKey = _pollKeyFor(_state.storyId, curLast.chapterIndex);
+        if (curKey != pollKey) return;
+        unawaited(generateIllustration(force: false));
+      });
     } catch (e, st) {
+      _illustrationAttemptInFlight = false;
       _imgLog(
         'failure',
         data: {
-          'storyId': _state.storyId,
+          'storyId': storyId,
           'chapterIndex': last.chapterIndex,
-          'fallbackEnabled': _devIllustrationFallbackEnabled,
+          'attempt': _illustrationPollAttempt,
         },
         error: e,
         stackTrace: st,
       );
 
-      // Always show a deterministic placeholder so the UI never crashes
-      // or renders an empty illustration box in production.
-      //
-      // Keep status=error so the user still has a visible "Try again" action.
+      final startedAt = _illustrationPollStartedAt ?? _now();
+      final elapsed = _now().difference(startedAt);
+      if (elapsed < maxElapsed && _illustrationPollAttempt < maxAttempts) {
+        final delay = _pollDelayForAttempt(_illustrationPollAttempt);
+        _illustrationPollAttempt += 1;
+        _imgLog(
+          'poll scheduled after failure',
+          data: {
+            'storyId': storyId,
+            'chapterIndex': last.chapterIndex,
+            'attempt': _illustrationPollAttempt,
+            'delayMs': delay.inMilliseconds,
+          },
+        );
+        _illustrationPollTimer?.cancel();
+        _illustrationPollTimer = Timer(delay, () {
+          if (!_illustrationUserInitiated) return;
+          unawaited(generateIllustration(force: false));
+        });
+        return;
+      }
+
+      _cancelIllustrationPolling(reason: 'final_failure');
+
+      // Final failure: keep retry UX; optional dev placeholder.
       Uint8List? bytes;
       try {
         if (_devIllustrationFallbackEnabled) {
-          bytes = await _buildDevFallbackBytes();
-        } else {
-          // In release, still generate a lightweight placeholder.
           bytes = await _buildDevFallbackBytes();
         }
       } catch (_) {
@@ -737,7 +933,6 @@ class StoryController extends ChangeNotifier {
         lastUpdated: _now(),
       );
       notifyListeners();
-
       unawaited(saveToLibrary());
     }
   }
@@ -791,7 +986,7 @@ class StoryController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _illustrationDebounce?.cancel();
+    _cancelIllustrationPolling(reason: 'dispose');
     // Best-effort autosave for unfinished stories.
     if (!_state.isFinished && _state.chapters.isNotEmpty) {
       unawaited(saveStory(manual: false));

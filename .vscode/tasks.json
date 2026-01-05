@@ -101,6 +101,149 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
+		},
+		{
+			"label": "server: node test (verbose)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Push-Location \"c:\\src\\kidsdom\\server\"; npm run build; node --test --test-reporter spec dist/__tests__/app.test.js; Pop-Location"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "server: test single (illustrate https)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Push-Location \"c:\\src\\kidsdom\\server\"; npm run build; node --test dist/__tests__/app.test.js --test-name-pattern \"illustrate returns https url\"; Pop-Location"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "server: test single (illustrate https) rerun",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Push-Location \"c:\\src\\kidsdom\\server\"; npm run build; node --test dist/__tests__/app.test.js --test-name-pattern \"illustrate returns https url\"; Pop-Location"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "server: test single (illustrate https) debug",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Push-Location \"c:\\src\\kidsdom\\server\"; npm run build; node --test dist/__tests__/app.test.js --test-name-pattern \"illustrate returns https url\"; Pop-Location"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "server: test filter (proper order)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Push-Location \"c:\\src\\kidsdom\\server\"; npm run build; node --test --test-name-pattern \"illustrate returns https url\" dist/__tests__/app.test.js; Pop-Location"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "server: npm test (tap tail)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Push-Location \"c:\\src\\kidsdom\\server\"; npm run build; node --test --test-reporter tap dist/__tests__/app.test.js | Select-Object -Last 120; Pop-Location"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "server: npm test (tap tail 400)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Push-Location \"c:\\src\\kidsdom\\server\"; npm run build; node --test --test-reporter tap dist/__tests__/app.test.js | Select-Object -Last 400; Pop-Location"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "server: npm test (show failing test)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Push-Location \"c:\\src\\kidsdom\\server\"; npm run build; node --test --test-reporter tap dist/__tests__/app.test.js | Select-String -Pattern '^not ok' -Context 0,8; Pop-Location"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "server: npm test (show failing test v2)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Push-Location \"c:\\src\\kidsdom\\server\"; npm run build; node --test --test-reporter tap dist/__tests__/app.test.js | Select-String -Pattern '^not ok' -Context 0,8; Pop-Location"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "server: test filter (illustrate moderation)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Push-Location \"c:\\src\\kidsdom\\server\"; npm run build; node --test --test-name-pattern \"illustrate moderation\" dist/__tests__/app.test.js; Pop-Location"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "server: write tap results file",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Push-Location \"c:\\src\\kidsdom\\server\"; npm run build; node --test --test-reporter tap dist/__tests__/app.test.js *> test-results.tap.txt; Pop-Location"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
 		}
 	]
 }

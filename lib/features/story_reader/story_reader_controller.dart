@@ -69,7 +69,12 @@ class StoryReaderController extends ChangeNotifier {
       final resp = GenerateStoryResponse.fromJson(json);
       data = _toViewData(resp);
     } catch (e) {
-      error = e.toString();
+      if (e is StoryServiceDailyLimitException ||
+          e is StoryServiceCooldownException) {
+        error = e.toString();
+      } else {
+        error = e.toString();
+      }
       debugPrint('StoryReader loadInitial error: $e');
     } finally {
       isLoading = false;
@@ -111,7 +116,12 @@ class StoryReaderController extends ChangeNotifier {
       data = _toViewData(resp);
       narrationPlaying = false;
     } catch (e) {
-      error = 'Failed to continue story: $e';
+      if (e is StoryServiceDailyLimitException ||
+          e is StoryServiceCooldownException) {
+        error = e.toString();
+      } else {
+        error = 'Failed to continue story: $e';
+      }
       debugPrint(error);
     } finally {
       isLoading = false;

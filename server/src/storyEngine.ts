@@ -3,6 +3,7 @@ import { createVertexModel } from './vertex.js';
 import { KIDS_POLICY_SYSTEM } from './moderation.js';
 import { AgentResponseSchema } from './storySchemas.js';
 import { AppError } from './errors.js';
+import { ZodError } from 'zod';
 
 function rid(prefix: string) {
   return `${prefix}_${randomUUID()}`;
@@ -16,6 +17,93 @@ function safeJsonParse(text: string): unknown {
     .replace(/^```\s*/i, '')
     .replace(/\s*```$/i, '');
   return JSON.parse(stripped);
+}
+
+function toUpstreamAppError(e: unknown): AppError {
+  // Normalize the many Vertex client error shapes into a safe AppError.
+  // IMPORTANT: never include raw upstream payloads in messages.
+  const msg = String((e as any)?.message ?? '');
+  const msgShort = msg
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s\s+/g, ' ')
+    .trim()
+    .slice(0, 240);
+
+  // Vertex SDK often includes: "got status: 429" etc.
+  const m = msg.match(/got status:\s*(\d{3})/i);
+  const statusFromMsg = m ? Number(m[1]) : NaN;
+
+  const status = Number.isFinite(statusFromMsg)
+    ? statusFromMsg
+    : typeof (e as any)?.status === 'number'
+      ? (e as any).status
+      : typeof (e as any)?.code === 'number'
+        ? (e as any).code
+        : undefined;
+
+  if (status === 429) {
+    // Some quota issues are *daily* and should not be treated like normal rate limiting.
+    // Vertex/GAX error messages vary; keep checks fuzzy but safe.
+    const isDailyQuota = /daily limit exceeded/i.test(msg) || /(quota|limit).*(per day|daily)/i.test(msg);
+    if (isDailyQuota) {
+      return new AppError({
+        status: 429,
+        code: 'UPSTREAM_DAILY_QUOTA',
+        safeMessage: 'Quota exceeded. Please try again later.',
+        message: msgShort || 'upstream_daily_quota',
+      });
+    }
+
+    return new AppError({
+      status: 429,
+      code: 'VERTEX_TEXT_RATE_LIMIT',
+      safeMessage: 'Too many requests. Please retry.',
+      message: msgShort || 'upstream_rate_limited',
+    });
+  }
+  if (status === 403) {
+    // Misconfiguration (permissions, org policy, etc.).
+    return new AppError({
+      status: 503,
+      code: 'VERTEX_TEXT_FORBIDDEN',
+      safeMessage: 'Service temporarily unavailable',
+      message: msgShort || 'upstream_forbidden',
+    });
+  }
+  if (status === 404) {
+    // Model not found is handled by model fallback higher up, but keep it safe here too.
+    return new AppError({
+      status: 503,
+      code: 'VERTEX_TEXT_MODEL_NOT_FOUND',
+      safeMessage: 'Service temporarily unavailable',
+      message: msgShort || 'upstream_model_not_found',
+    });
+  }
+  if (status === 400) {
+    // Bad request to upstream (often model parameter mismatch / API change).
+    return new AppError({
+      status: 503,
+      code: 'VERTEX_TEXT_BAD_REQUEST',
+      safeMessage: 'Service temporarily unavailable',
+      message: msgShort || 'upstream_bad_request',
+    });
+  }
+  if (status === 500 || status === 502 || status === 503) {
+    return new AppError({
+      status: 503,
+      code: 'VERTEX_TEXT_UNAVAILABLE',
+      safeMessage: 'Service temporarily unavailable',
+      message: msgShort || 'upstream_unavailable',
+    });
+  }
+
+  // Fallback: treat as transient upstream failure.
+  return new AppError({
+    status: 503,
+    code: 'VERTEX_TEXT_FAILED',
+    safeMessage: 'Service temporarily unavailable',
+    message: msgShort || 'upstream_failed',
+  });
 }
 
 async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -117,29 +205,43 @@ export async function generateCreateResponse(opts: {
   };
 
   const resp = await withTimeout(
-    model.generateContent({
-    contents: [
-      { role: 'user', parts: [{ text: JSON.stringify(prompt) }] },
-    ],
-    generationConfig: {
-      temperature: opts.generation.temperature,
-      maxOutputTokens: opts.generation.maxOutputTokens,
-      responseMimeType: 'application/json',
-    },
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_VIOLENCE', threshold: 'BLOCK_LOW_AND_ABOVE' },
-    ],
-    } as any),
+    model
+      .generateContent({
+        contents: [{ role: 'user', parts: [{ text: JSON.stringify(prompt) }] }],
+        generationConfig: {
+          temperature: opts.generation.temperature,
+          maxOutputTokens: opts.generation.maxOutputTokens,
+          responseMimeType: 'application/json',
+        },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+        ],
+      } as any)
+      .catch((e: unknown) => {
+        throw toUpstreamAppError(e);
+      }),
     opts.requestTimeoutMs ?? 25_000,
   );
 
   const text = (resp.response?.candidates?.[0]?.content?.parts?.[0] as any)?.text ?? '';
-  const parsed = safeJsonParse(text);
-  const validated = AgentResponseSchema.parse(parsed);
+  let validated: any;
+  try {
+    const parsed = safeJsonParse(text);
+    validated = AgentResponseSchema.parse(parsed);
+  } catch (e: any) {
+    // Model returned invalid JSON or wrong schema.
+    if (e instanceof SyntaxError || e instanceof ZodError) {
+      throw new AppError({
+        status: 502,
+        code: 'VERTEX_TEXT_BAD_RESPONSE',
+        safeMessage: 'Service temporarily unavailable',
+      });
+    }
+    throw e;
+  }
 
   // Override ids to ensure stable server control.
   return {
@@ -270,29 +372,42 @@ export async function generateContinueResponse(opts: {
   };
 
   const resp = await withTimeout(
-    model.generateContent({
-    contents: [
-      { role: 'user', parts: [{ text: JSON.stringify(prompt) }] },
-    ],
-    generationConfig: {
-      temperature: opts.generation.temperature,
-      maxOutputTokens: opts.generation.maxOutputTokens,
-      responseMimeType: 'application/json',
-    },
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_VIOLENCE', threshold: 'BLOCK_LOW_AND_ABOVE' },
-    ],
-    } as any),
+    model
+      .generateContent({
+        contents: [{ role: 'user', parts: [{ text: JSON.stringify(prompt) }] }],
+        generationConfig: {
+          temperature: opts.generation.temperature,
+          maxOutputTokens: opts.generation.maxOutputTokens,
+          responseMimeType: 'application/json',
+        },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+        ],
+      } as any)
+      .catch((e: unknown) => {
+        throw toUpstreamAppError(e);
+      }),
     opts.requestTimeoutMs ?? 25_000,
   );
 
   const text = (resp.response?.candidates?.[0]?.content?.parts?.[0] as any)?.text ?? '';
-  const parsed = safeJsonParse(text);
-  const validated = AgentResponseSchema.parse(parsed);
+  let validated: any;
+  try {
+    const parsed = safeJsonParse(text);
+    validated = AgentResponseSchema.parse(parsed);
+  } catch (e: any) {
+    if (e instanceof SyntaxError || e instanceof ZodError) {
+      throw new AppError({
+        status: 502,
+        code: 'VERTEX_TEXT_BAD_RESPONSE',
+        safeMessage: 'Service temporarily unavailable',
+      });
+    }
+    throw e;
+  }
 
   return {
     ...validated,

@@ -8,6 +8,8 @@ class GeneratedImageResult {
 
   const GeneratedImageResult({this.url, this.bytes});
 
+  static GeneratedImageResult empty() => const GeneratedImageResult();
+
   bool get hasUrl => (url ?? '').trim().isNotEmpty;
   bool get hasBytes => bytes != null && bytes!.isNotEmpty;
 

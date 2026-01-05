@@ -31,23 +31,35 @@ class HomePage extends StatelessWidget {
         ],
       ),
       body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _NeumorphicCircleButton(
-                icon: Icons.add,
-                label: t.createStory,
-                onTap: () => context.push('/setup'),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 32,
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _NeumorphicCircleButton(
+                        icon: Icons.add,
+                        label: t.createStory,
+                        onTap: () => context.push('/setup'),
+                      ),
+                      const SizedBox(height: 28),
+                      _NeumorphicCircleButton(
+                        icon: Icons.menu_book_outlined,
+                        label: t.myStories,
+                        onTap: () => context.push('/reader'),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(height: 28),
-              _NeumorphicCircleButton(
-                icon: Icons.menu_book_outlined,
-                label: t.myStories,
-                onTap: () => context.push('/reader'),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

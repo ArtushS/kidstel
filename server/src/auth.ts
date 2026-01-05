@@ -56,8 +56,9 @@ export async function verifyRequestTokens(opts: {
     }
     // Anonymous mode (intended for local testing only).
     // Use a stable per-client uid when provided (DEV/TEST), otherwise random.
-    const nodeEnv = (process.env.NODE_ENV ?? '').toString().trim().toLowerCase();
-    const devUid = nodeEnv !== 'production' ? getDevUid(req) : null;
+    // NOTE: This is gated by authRequired=false; in production we keep AUTH_REQUIRED=true,
+    // so this dev header is not used.
+    const devUid = getDevUid(req);
     decoded = { uid: devUid ? `anon_${devUid}` : `anon_${randomUUID()}` } as any;
   } else {
     try {

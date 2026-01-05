@@ -42,6 +42,10 @@ class _StorySetupPageState extends State<StorySetupPage> {
 
   bool _isGenerating = false;
 
+  // Debug-only readiness tracking to avoid log spam.
+  bool? _lastCanGenerate;
+  String? _lastCanGenerateReason;
+
   final _catalogRepo = StorySetupCatalogRepository();
 
   String? _lastCatalogLocaleTag;
@@ -80,6 +84,12 @@ class _StorySetupPageState extends State<StorySetupPage> {
         _heroCatalog = heroes;
         _locationCatalog = locations;
         _typeCatalog = types;
+      });
+
+      // After catalogs load (or remain empty and we fall back), log readiness once.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _debugLogCanGenerateIfChanged(context, hint: 'afterCatalogLoad');
       });
     } catch (e) {
       if (kDebugMode) {
@@ -508,13 +518,94 @@ class _StorySetupPageState extends State<StorySetupPage> {
   }
 
   bool _canGenerate(BuildContext context) {
-    final hasIdea = _ideaCtrl.text.trim().isNotEmpty;
+    return _evalCanGenerate(context).ok;
+  }
+
+  ({bool ok, String reason}) _evalCanGenerate(BuildContext context) {
+    final ideaLen = _ideaCtrl.text.trim().length;
+    final hasText = ideaLen > 0;
+
     final heroes = _getHeroes(context);
     final locations = _getLocations(context);
     final types = _getTypes(context);
-    final hasPicks =
+    if (heroes.isEmpty) {
+      return (ok: hasText, reason: hasText ? 'ok_text' : 'missingHero');
+    }
+    if (locations.isEmpty) {
+      return (ok: hasText, reason: hasText ? 'ok_text' : 'missingLocation');
+    }
+    if (types.isEmpty) {
+      return (ok: hasText, reason: hasText ? 'ok_text' : 'missingType');
+    }
+
+    final int hi = _heroIndex.clamp(0, max(0, heroes.length - 1)).toInt();
+    final int li = _locIndex.clamp(0, max(0, locations.length - 1)).toInt();
+    final int ti = _typeIndex.clamp(0, max(0, types.length - 1)).toInt();
+
+    // Enablement must not depend on Firestore-specific fields or icon availability.
+    // Fallback items may have Storage paths or placeholder icons.
+    bool valid(_PickItem p) {
+      return p.id.trim().isNotEmpty && p.title.trim().isNotEmpty;
+    }
+
+    final hasSelections =
+        valid(heroes[hi]) && valid(locations[li]) && valid(types[ti]);
+
+    // UX contract:
+    // - Button should be active immediately (Random selections are valid).
+    // - When user types, carousels disable but button stays active.
+    // - If text is cleared, carousels re-enable and button stays active as long
+    //   as something is selected.
+    // Therefore: enabled when (hasText OR hasSelections).
+    if (hasText || hasSelections) {
+      if (hasText && hasSelections) {
+        return (ok: true, reason: 'ok_text+selection');
+      }
+      if (hasText) {
+        return (ok: true, reason: 'ok_text');
+      }
+      return (ok: true, reason: 'ok_selection');
+    }
+
+    // Should be rare (we always have Random items), but keep a deterministic reason.
+    if (!valid(heroes[hi])) return (ok: false, reason: 'missingHero');
+    if (!valid(locations[li])) return (ok: false, reason: 'missingLocation');
+    if (!valid(types[ti])) return (ok: false, reason: 'missingType');
+    return (ok: false, reason: 'missingSelection');
+  }
+
+  void _debugLogCanGenerateIfChanged(BuildContext context, {String? hint}) {
+    if (!kDebugMode) return;
+    final r = _evalCanGenerate(context);
+    final changed =
+        _lastCanGenerate != r.ok || _lastCanGenerateReason != r.reason;
+    if (!changed) return;
+    _lastCanGenerate = r.ok;
+    _lastCanGenerateReason = r.reason;
+
+    final heroes = _getHeroes(context);
+    final locations = _getLocations(context);
+    final types = _getTypes(context);
+    final int hi = _heroIndex.clamp(0, max(0, heroes.length - 1)).toInt();
+    final int li = _locIndex.clamp(0, max(0, locations.length - 1)).toInt();
+    final int ti = _typeIndex.clamp(0, max(0, types.length - 1)).toInt();
+    final heroId = heroes.isEmpty ? '' : heroes[hi].id;
+    final locId = locations.isEmpty ? '' : locations[li].id;
+    final typeId = types.isEmpty ? '' : types[ti].id;
+    final hasText = _ideaCtrl.text.trim().isNotEmpty;
+    final hasSelections =
         heroes.isNotEmpty && locations.isNotEmpty && types.isNotEmpty;
-    return hasIdea || hasPicks;
+
+    debugPrint(
+      '[StorySetup] canGenerate=${r.ok} reason=${r.reason} '
+      'promptLen=${_ideaCtrl.text.trim().length} '
+      'hasText=$hasText hasSelection=$hasSelections '
+      'hero=$heroId($hi/${heroes.length}) '
+      'loc=$locId($li/${locations.length}) '
+      'type=$typeId($ti/${types.length}) '
+      'catalogs(h=${_heroCatalog.length},l=${_locationCatalog.length},t=${_typeCatalog.length})'
+      '${hint == null ? '' : ' hint=$hint'}',
+    );
   }
 
   _PickItem _resolveRandomIfNeeded(_PickItem picked, List<_PickItem> list) {
@@ -578,7 +669,12 @@ class _StorySetupPageState extends State<StorySetupPage> {
   }
 
   Future<void> _onGenerate(BuildContext context) async {
-    if (!_canGenerate(context)) return;
+    if (!_canGenerate(context)) {
+      if (kDebugMode) {
+        debugPrint('[StorySetupPage] Skip generate: no input');
+      }
+      return;
+    }
 
     // IMPORTANT: send only the editable TextField content (never preview/buffer).
     final ideaText = _ideaCtrl.text.trim();
@@ -595,6 +691,14 @@ class _StorySetupPageState extends State<StorySetupPage> {
     final loc = _resolveRandomIfNeeded(rawLoc, locations);
     final type = _resolveRandomIfNeeded(rawType, types);
 
+    if (kDebugMode) {
+      debugPrint(
+        '[StorySetup] pressed generate lang=${SettingsScope.of(context).settings.defaultLanguageCode} '
+        'heroId=${hero.id} locId=${loc.id} typeId=${type.id} '
+        'promptLen=${ideaText.length}',
+      );
+    }
+
     final settings = SettingsScope.of(context).settings;
 
     // Data-only setup object (for passing around / persistence later).
@@ -605,7 +709,9 @@ class _StorySetupPageState extends State<StorySetupPage> {
       storyLang: settings.defaultLanguageCode,
       storyLength: _mapStoryLength(settings.storyLength),
       creativityLevel: _mapCreativity(settings.creativityLevel),
-      imageEnabled: settings.autoIllustrations,
+      // IMPORTANT: do not trigger image generation/uploads on story generation.
+      // Illustrations are created only on explicit user action in the reader.
+      imageEnabled: false,
       hero: hero.title,
       location: loc.title,
       storyType: type.title,
@@ -666,7 +772,11 @@ class _StorySetupPageState extends State<StorySetupPage> {
       if (!context.mounted) return;
 
       final title = AppLocalizations.of(context)!.generationFailedTitle;
-      final msg = e.toString();
+      final msg =
+          (e is StoryServiceDailyLimitException ||
+              e is StoryServiceCooldownException)
+          ? e.toString()
+          : e.toString();
 
       await showDialog<void>(
         context: context,
@@ -943,10 +1053,16 @@ class _StorySetupPageState extends State<StorySetupPage> {
                   ),
                 ),
               ),
-              _BottomBar(
-                enabled: _canGenerate(context) && !_isGenerating,
-                onGenerate: () => _onGenerate(context),
-                label: _isGenerating ? t.generating : t.generate,
+              AnimatedBuilder(
+                animation: _ideaCtrl,
+                builder: (context, _) {
+                  _debugLogCanGenerateIfChanged(context);
+                  return _BottomBar(
+                    enabled: _canGenerate(context) && !_isGenerating,
+                    onGenerate: () => _onGenerate(context),
+                    label: _isGenerating ? t.generating : t.generate,
+                  );
+                },
               ),
             ],
           ),

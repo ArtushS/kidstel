@@ -24,7 +24,9 @@ const EnvSchema = z.object({
 
   // Vertex AI
   VERTEX_LOCATION: z.string().default('us-central1'),
-  GEMINI_MODEL: z.string().default('gemini-1.5-flash'),
+  // NOTE: gemini-1.5-* models have retirement dates and can start returning 404.
+  // Use an auto-updated alias that always points to the latest stable Flash model.
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
 
   // Firebase Storage
   STORAGE_BUCKET: z.string().optional(), // defaults to "<projectId>.appspot.com"
@@ -39,6 +41,10 @@ const EnvSchema = z.object({
   MAX_OUTPUT_CHARS: z.string().optional(),
   DAILY_STORY_LIMIT: z.string().optional(),
   AUDIT_STORE_TEXT: z.string().optional(),
+
+  // Safety: optionally require the client to mark illustration calls as
+  // explicitly user-initiated (prevents background/auto illustrate flows).
+  REQUIRE_ILLUSTRATE_USER_INITIATED: z.string().optional(),
 
   // Admin policy loader
   POLICY_MODE: z.string().optional(), // 'firestore' (default) | 'static'
@@ -65,6 +71,7 @@ export type Env = {
   maxOutputChars: number;
   dailyStoryLimit: number;
   auditStoreText: boolean;
+  requireIllustrateUserInitiated: boolean;
 
   policyMode: 'firestore' | 'static';
   policyStaticJson: string;
@@ -94,6 +101,8 @@ export function readEnv(processEnv: NodeJS.ProcessEnv): Env {
     maxOutputChars: Number(parsed.MAX_OUTPUT_CHARS ?? '12000'),
     dailyStoryLimit: Number(parsed.DAILY_STORY_LIMIT ?? '40'),
     auditStoreText: boolFromString(parsed.AUDIT_STORE_TEXT, false),
+
+    requireIllustrateUserInitiated: boolFromString(parsed.REQUIRE_ILLUSTRATE_USER_INITIATED, false),
 
     policyMode: ((parsed.POLICY_MODE ?? 'firestore').trim().toLowerCase() === 'static')
       ? 'static'

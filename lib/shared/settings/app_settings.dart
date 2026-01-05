@@ -366,7 +366,8 @@ class AppSettings {
       disableScaryContent: (json['disableScaryContent'] ?? true) as bool,
       requireParentConfirmation:
           (json['requireParentConfirmation'] ?? true) as bool,
-      autoIllustrations: (json['autoIllustrations'] ?? true) as bool,
+      // IMPORTANT: default to false to avoid accidental background image generation.
+      autoIllustrations: (json['autoIllustrations'] ?? false) as bool,
       devIllustrationFallbackEnabled:
           (json['devIllustrationFallbackEnabled'] ??
                   const bool.fromEnvironment(

@@ -27,6 +27,23 @@ export const logger = pino({
 export const httpLogger = pinoHttp({
   logger,
   // Never log headers or bodies. Keep access logs metadata-only.
+  customProps(req, res) {
+    const body = (req as any)?.body;
+    const bodyObj = body && typeof body === 'object' && !Array.isArray(body) ? (body as any) : null;
+    const requestIdFromBody =
+      bodyObj && typeof bodyObj.requestId === 'string' && bodyObj.requestId.trim() ? bodyObj.requestId.trim() : null;
+    const requestIdFromLocals =
+      (res as any)?.locals && typeof (res as any).locals.requestId === 'string' && (res as any).locals.requestId.trim()
+        ? (res as any).locals.requestId.trim()
+        : null;
+
+    const actionRaw = bodyObj ? (bodyObj.action ?? '').toString().trim().toLowerCase() : '';
+
+    return {
+      requestId: requestIdFromLocals ?? requestIdFromBody,
+      action: actionRaw || undefined,
+    };
+  },
   serializers: {
     req(req) {
       return {

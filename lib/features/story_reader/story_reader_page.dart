@@ -14,7 +14,6 @@ import '../story/controllers/narration_controller.dart';
 import '../story/controllers/story_controller.dart';
 import '../story/models/story_chapter.dart';
 import '../story/models/story_state.dart';
-import '../story/widgets/story_image_section.dart';
 import 'story_reader_args.dart';
 
 class StoryReaderPage extends StatelessWidget {
@@ -73,8 +72,31 @@ class StoryReaderPage extends StatelessWidget {
   }
 }
 
-class _StoryReaderBody extends StatelessWidget {
+class _StoryReaderBody extends StatefulWidget {
   const _StoryReaderBody();
+
+  @override
+  State<_StoryReaderBody> createState() => _StoryReaderBodyState();
+}
+
+class _StoryReaderBodyState extends State<_StoryReaderBody> {
+  bool? _lastAutoIllustrations;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final settings = SettingsScope.of(context).settings;
+    final next = settings.autoIllustrations;
+    if (_lastAutoIllustrations == next) return;
+    _lastAutoIllustrations = next;
+
+    // Sync setting changes into the controller (no tokens/content logged).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<StoryController>().setAutoIllustrationsEnabled(next);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,11 +124,8 @@ class _StoryReaderBody extends StatelessWidget {
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   sliver: SliverToBoxAdapter(
-                    child: StoryImageSection(
-                      imageUrl: last.imageUrl,
-                      imageBase64: last.imageBase64,
-                      aspectRatio: 1.0,
-                    ),
+                    // Single illustration UI: the functional panel (loading/retry) moved to the top.
+                    child: _ImagePanel(last: last),
                   ),
                 ),
 
@@ -166,7 +185,8 @@ class _StoryReaderBody extends StatelessWidget {
 
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  sliver: SliverToBoxAdapter(child: _ImagePanel(last: last)),
+                  // Illustration panel moved to the top; do not render a duplicate here.
+                  sliver: const SliverToBoxAdapter(child: SizedBox.shrink()),
                 ),
 
                 SliverPadding(
@@ -561,11 +581,6 @@ class _ImagePanel extends StatelessWidget {
     final url = story.illustrationUrl;
     final bytes = story.illustrationBytes;
 
-    if (status == IllustrationStatus.idle) {
-      // Spec: do not show any placeholder before generation begins.
-      return const SizedBox.shrink();
-    }
-
     Widget content;
     switch (status) {
       case IllustrationStatus.loading:
@@ -678,7 +693,22 @@ class _ImagePanel extends StatelessWidget {
         );
         break;
       case IllustrationStatus.idle:
-        content = const SizedBox.shrink();
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.illustration, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: story.isLoading
+                  ? null
+                  : () => context.read<StoryController>().generateIllustration(
+                      force: true,
+                    ),
+              icon: const Icon(Icons.image_outlined),
+              label: Text(l10n.generateImage),
+            ),
+          ],
+        );
         break;
     }
 

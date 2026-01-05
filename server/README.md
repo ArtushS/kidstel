@@ -141,6 +141,32 @@ curl -sS "$STORY_AGENT_URL" \
 	}'
 ```
 
+### Generate (empty input) -> 422 `generate_input_required`
+
+Note: depending on your deployment, you may need `Authorization` and `X-Firebase-AppCheck` headers.
+
+```bash
+curl -sS "$STORY_AGENT_URL" \
+	-H "Content-Type: application/json" \
+	-d '{"action":"generate","storyLang":"en"}'
+```
+
+Expected:
+- HTTP 422
+- JSON body includes `{"error":"generate_input_required"}` (plus `requestId` and `debug`)
+
+### Invalid JSON body -> 400 `invalid_json`
+
+```bash
+curl -sS "$STORY_AGENT_URL" \
+	-H "Content-Type: application/json" \
+	-d '{'
+```
+
+Expected:
+- HTTP 400
+- JSON body includes `{"error":"invalid_json"}` (plus `requestId` and `debug`)
+
 ### Continue
 
 ```bash

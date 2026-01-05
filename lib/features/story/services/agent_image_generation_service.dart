@@ -76,6 +76,7 @@ class AgentImageGenerationService implements ImageGenerationService {
 
     final body = <String, dynamic>{
       'action': 'illustrate',
+      'meta': {'userInitiated': true},
       'storyId': story.storyId,
       'storyLang': story.locale,
       'chapterIndex': last.chapterIndex,
@@ -186,7 +187,7 @@ class AgentImageGenerationService implements ImageGenerationService {
         );
 
         // Do not throw: treat as a soft failure so the UI can show a retry.
-        return const GeneratedImageResult();
+        return GeneratedImageResult.empty();
       }
 
       if (result.hasUrl) {
@@ -329,7 +330,7 @@ class AgentImageGenerationService implements ImageGenerationService {
       }
     }
 
-    return const GeneratedImageResult();
+    return GeneratedImageResult.empty();
   }
 
   GeneratedImageResult? _extractFromImageField(Object? image) {
