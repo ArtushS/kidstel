@@ -356,7 +356,7 @@ class StoryService {
     return;
   }
 
-  Future<_BuiltHeaders> _buildHeaders() async {
+  Future<_BuiltHeaders> _buildHeaders({String? storyLangHint}) async {
     final headers = <String, String>{'Content-Type': 'application/json'};
     var hasAuth = false;
     var hasAppCheck = false;
@@ -394,12 +394,15 @@ class StoryService {
       }
     }
 
-    // Locale hint (optional)
-    final loc = firebaseLocale?.trim();
-    if (loc != null && loc.isNotEmpty && loc.toLowerCase() != 'null') {
+    // Locale hint (optional).
+    // Prefer the request's storyLang so EN/RU/HY requests are identical except lang.
+    final hint = storyLangHint?.trim().toLowerCase();
+    final fallback = firebaseLocale?.trim();
+    final raw = (hint != null && hint.isNotEmpty) ? hint : fallback;
+    if (raw != null && raw.isNotEmpty && raw.toLowerCase() != 'null') {
       // IMPORTANT: only send small allowlisted values to backend.
       // This avoids accidental "ru-RU" / "en-US" values breaking strict servers.
-      final normalized = loc.toLowerCase();
+      final normalized = raw.toLowerCase();
       if (normalized == 'en' || normalized == 'ru' || normalized == 'hy') {
         headers['X-Firebase-Locale'] = normalized;
       }
@@ -556,7 +559,7 @@ class StoryService {
 
     final client = http.Client();
     try {
-      final built = await _buildHeaders();
+      final built = await _buildHeaders(storyLangHint: storyLang);
 
       const timeout = Duration(seconds: 60);
       const maxRetries429 = 2;

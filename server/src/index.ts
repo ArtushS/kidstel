@@ -94,8 +94,23 @@ function safeTextLen(v: unknown): number {
   return typeof v === 'string' ? v.trim().length : 0;
 }
 
-function getLangOrDefault(raw: unknown): 'ru' | 'en' | 'hy' {
+function normalizeLangInput(raw: unknown): 'ru' | 'en' | 'hy' | undefined {
   const v = raw?.toString().trim().toLowerCase();
+  if (!v) return undefined;
+  const parsed = LangSchema.safeParse(v);
+  if (parsed.success) return parsed.data;
+
+  const compact = v.replace(/[_-]/g, '');
+  if (compact.startsWith('ru')) return 'ru';
+  if (compact.startsWith('en')) return 'en';
+  if (compact.startsWith('hy') || compact.startsWith('am')) return 'hy';
+
+  return undefined;
+}
+
+function getLangOrDefault(raw: unknown): 'ru' | 'en' | 'hy' {
+  const normalized = normalizeLangInput(raw);
+  const v = normalized ?? raw?.toString().trim().toLowerCase();
   const parsed = LangSchema.safeParse(v);
   return parsed.success ? parsed.data : 'en';
 }
@@ -361,6 +376,25 @@ export function createApp(
     return policy;
   }
 
+  function toStoreUnavailable(e: unknown): AppError {
+    const msg = String((e as any)?.message ?? e ?? '').trim();
+    return new AppError({
+      status: 503,
+      code: 'STORE_UNAVAILABLE',
+      safeMessage: 'Service temporarily disabled',
+      message: msg || 'Store unavailable',
+    });
+  }
+
+  async function withStore<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (e) {
+      if (isAppError(e)) throw e;
+      throw toStoreUnavailable(e);
+    }
+  }
+
   async function requireAuth(req: Request, res: Response): Promise<{ uid: string } | null> {
     try {
       const auth = await verifyRequestTokens({
@@ -520,6 +554,10 @@ export function createApp(
       }
 
       const bodyRaw = (req.body ?? {}) as any;
+      const storyLangRawFromBody = (bodyRaw?.storyLang ?? bodyRaw?.story_language ?? '').toString().trim();
+      const normalizedLang = normalizeLangInput(storyLangRawFromBody);
+      if (normalizedLang) bodyRaw.storyLang = normalizedLang;
+
       const requestId =
         typeof bodyRaw?.requestId === 'string' && bodyRaw.requestId.trim()
           ? bodyRaw.requestId.trim()
@@ -596,7 +634,13 @@ export function createApp(
       if (!env.storeDisabled) {
         if (!fs) throw new AppError({ status: 503, code: 'STORE_UNAVAILABLE', safeMessage: 'Service temporarily disabled' });
         try {
-          await store.enforceDailyLimit(fs as any, { uid: auth.uid, limit: policy.daily_story_limit, yyyymmdd: yyyymmdd(new Date()) });
+          await withStore(() =>
+            store.enforceDailyLimit(fs as any, {
+              uid: auth.uid,
+              limit: policy.daily_story_limit,
+              yyyymmdd: yyyymmdd(new Date()),
+            }),
+          );
         } catch (e: any) {
           if (String(e?.message ?? '').includes('DAILY_LIMIT_EXCEEDED')) {
             const requestId = body.requestId?.trim() || `req_${randomUUID()}`;
@@ -611,7 +655,7 @@ export function createApp(
               .catch(() => undefined);
             return respondError(res, 429, 'daily_limit_exceeded', { requestId });
           }
-          throw e;
+          throw toStoreUnavailable(e);
         }
       }
 
@@ -758,65 +802,87 @@ export function createApp(
 
       if (!env.storeDisabled) {
         if (!fs) throw new AppError({ status: 503, code: 'STORE_UNAVAILABLE', safeMessage: 'Service temporarily disabled' });
-        await store.upsertStorySession(fs as any, {
-          storyId: out.storyId,
-          uid: auth.uid,
-          title: out.title,
-          lang: body.storyLang ?? lang,
-          ageGroup: body.ageGroup,
-          storyLength: body.storyLength,
-          creativityLevel: body.creativityLevel,
-          hero: body.selection?.hero,
-          location: body.selection?.location,
-          style: body.selection?.style,
-          idea: body.idea ?? body.prompt,
-          policyVersion: 'v1',
-          chapters: [
-            {
+        const ideaValue = (body.idea ?? body.prompt)?.toString().trim();
+        await withStore(() =>
+          store.upsertStorySession(fs as any, {
+            storyId: out.storyId,
+            uid: auth.uid,
+            title: out.title,
+            lang: body.storyLang ?? lang,
+            ageGroup: body.ageGroup,
+            storyLength: body.storyLength,
+            creativityLevel: body.creativityLevel,
+            hero: body.selection?.hero,
+            location: body.selection?.location,
+            style: body.selection?.style,
+            // Firestore does not allow `undefined` values.
+            // Omit the field when clients generate from selection-only.
+            ...(ideaValue ? { idea: ideaValue } : {}),
+            policyVersion: 'v1',
+            chapters: [
+              {
+                chapterIndex: out.chapterIndex,
+                title: out.title,
+                text: out.text,
+                progress: out.progress,
+                imageUrl: out.image?.url ?? null,
+                choices: (out.choices ?? []).map((c: any) => ({ id: c.id, label: c.label, payload: c.payload ?? {} })),
+              },
+            ],
+          }),
+        );
+
+        // Also persist to chapters subcollection for robust continuation.
+        await withStore(() =>
+          store.writeStoryChapter(fs as any, {
+            storyId: out.storyId,
+            uid: auth.uid,
+            title: out.title,
+            lang: (body.storyLang ?? lang).toString(),
+            chapter: {
               chapterIndex: out.chapterIndex,
               title: out.title,
               text: out.text,
               progress: out.progress,
-              imageUrl: out.image?.url ?? null,
               choices: (out.choices ?? []).map((c: any) => ({ id: c.id, label: c.label, payload: c.payload ?? {} })),
+              imageUrl: out.image?.url ?? null,
             },
-          ],
-        });
+          }),
+        );
 
-        // Also persist to chapters subcollection for robust continuation.
-        await store.writeStoryChapter(fs as any, {
-          storyId: out.storyId,
-          uid: auth.uid,
-          title: out.title,
-          lang: (body.storyLang ?? lang).toString(),
-          chapter: {
-            chapterIndex: out.chapterIndex,
-            title: out.title,
-            text: out.text,
-            progress: out.progress,
-            choices: (out.choices ?? []).map((c: any) => ({ id: c.id, label: c.label, payload: c.payload ?? {} })),
-            imageUrl: out.image?.url ?? null,
-          },
-        });
-
-        await store.writeAudit(fs as any, {
-          requestId: out.requestId,
-          uid: auth.uid,
-          route,
-          blocked: false,
-          storyId: out.storyId,
-        }).catch(() => undefined);
+        await withStore(() =>
+          store.writeAudit(fs as any, {
+            requestId: out.requestId,
+            uid: auth.uid,
+            route,
+            blocked: false,
+            storyId: out.storyId,
+          }),
+        ).catch(() => undefined);
       }
 
       return res.status(200).json(out);
     } catch (e: any) {
-      if (e instanceof ZodError) return respondError(res, 400, 'invalid_request');
+      if (e instanceof ZodError) {
+        logger.warn(
+          { err: e, requestId: (res.locals as any)?.requestId ?? null, route, action: 'generate' },
+          'create zod validation failed',
+        );
+        return respondError(res, 400, 'invalid_request', {
+          requestId: (res.locals as any)?.requestId ?? null,
+          issues: e.issues?.slice(0, 6).map((i) => ({ path: (i.path ?? []).join('.') ?? '', code: i.code })),
+        });
+      }
       if (isAppError(e)) return res.status(e.status).json(toSafeErrorBody(e));
       logger.error(
         { err: e, requestId: (res.locals as any)?.requestId ?? null, route, action: 'generate' },
         'create failed',
       );
-      return respondError(res, 500, 'internal_error');
+      const requestId = (res.locals as any)?.requestId ?? newRequestId();
+      return respondError(res, 503, 'internal_error', {
+        requestId,
+        errShort: toUpstreamErrorMessageShort(e),
+      });
     }
   }
 
@@ -850,7 +916,11 @@ export function createApp(
         return res.status(413).json({ error: 'Request entity too large' });
       }
 
-      const body = ContinueRequestSchema.parse(req.body ?? {});
+      const bodyRaw = (req.body ?? {}) as any;
+      const normalizedLang = normalizeLangInput(bodyRaw?.storyLang ?? bodyRaw?.story_language);
+      if (normalizedLang) bodyRaw.storyLang = normalizedLang;
+
+      const body = ContinueRequestSchema.parse(bodyRaw);
 
       const requestId =
         typeof (body as any)?.requestId === 'string' && (body as any).requestId.trim()
@@ -904,7 +974,13 @@ export function createApp(
       if (!fs) throw new AppError({ status: 503, code: 'STORE_UNAVAILABLE', safeMessage: 'Service temporarily disabled' });
 
       try {
-        await store.enforceDailyLimit(fs as any, { uid: auth.uid, limit: policy.daily_story_limit, yyyymmdd: yyyymmdd(new Date()) });
+        await withStore(() =>
+          store.enforceDailyLimit(fs as any, {
+            uid: auth.uid,
+            limit: policy.daily_story_limit,
+            yyyymmdd: yyyymmdd(new Date()),
+          }),
+        );
       } catch (e: any) {
         if (String(e?.message ?? '').includes('DAILY_LIMIT_EXCEEDED')) {
           const requestId = body.requestId?.trim() || ((res.locals as any)?.requestId ?? `req_${randomUUID()}`);
@@ -920,15 +996,15 @@ export function createApp(
             .catch(() => undefined);
           return respondError(res, 429, 'daily_limit_exceeded', { requestId, storyId: body.storyId });
         }
-        throw e;
+        throw toStoreUnavailable(e);
       }
 
-      const meta = await store.getStoryMeta(fs as any, body.storyId);
+      const meta = await withStore(() => store.getStoryMeta(fs as any, body.storyId));
       if (!meta) return respondError(res, 404, 'story_not_found');
       if (meta.uid !== auth.uid) return respondError(res, 403, 'forbidden');
 
       // Prefer chapter subcollection; fall back to story.chapters array.
-      const recentChapters = await store.listStoryChapters(fs as any, body.storyId, { limit: 4 });
+      const recentChapters = await withStore(() => store.listStoryChapters(fs as any, body.storyId, { limit: 4 }));
       const last = recentChapters.length ? recentChapters[recentChapters.length - 1] : null;
       const prevIndexRaw =
         typeof last?.chapterIndex === 'number'
@@ -1121,36 +1197,40 @@ export function createApp(
       ]);
 
       // Persist new chapter into subcollection.
-      await store.writeStoryChapter(fs as any, {
-        storyId: outFixed.storyId,
-        uid: auth.uid,
-        title: meta.title ?? outFixed.title,
-        lang: (meta.lang ?? body.storyLang ?? lang).toString(),
-        chapter: {
-          chapterIndex: outFixed.chapterIndex,
-          title: outFixed.title,
-          text: outFixed.text,
-          progress: outFixed.progress,
-          choices: (outFixed.choices ?? []).map((c: any) => ({ id: c.id, label: c.label, payload: c.payload ?? {} })),
-          imageUrl: outFixed.image?.url ?? null,
-        },
-      });
+      await withStore(() =>
+        store.writeStoryChapter(fs as any, {
+          storyId: outFixed.storyId,
+          uid: auth.uid,
+          title: meta.title ?? outFixed.title,
+          lang: (meta.lang ?? body.storyLang ?? lang).toString(),
+          chapter: {
+            chapterIndex: outFixed.chapterIndex,
+            title: outFixed.title,
+            text: outFixed.text,
+            progress: outFixed.progress,
+            choices: (outFixed.choices ?? []).map((c: any) => ({ id: c.id, label: c.label, payload: c.payload ?? {} })),
+            imageUrl: outFixed.image?.url ?? null,
+          },
+        }),
+      );
 
-      await store.upsertStorySession(fs as any, {
-        storyId: outFixed.storyId,
-        uid: auth.uid,
-        title: meta.title ?? outFixed.title,
-        lang: meta.lang ?? body.storyLang ?? lang,
-        ageGroup: meta.ageGroup ?? body.ageGroup,
-        storyLength: meta.storyLength ?? body.storyLength,
-        creativityLevel: meta.creativityLevel ?? body.creativityLevel,
-        hero: meta.hero ?? body.selection?.hero,
-        location: meta.location ?? body.selection?.location,
-        style: meta.style ?? body.selection?.style,
-        idea: meta.idea ?? body.idea,
-        policyVersion: meta.policyVersion ?? 'v1',
-        chapters: nextChapters,
-      });
+      await withStore(() =>
+        store.upsertStorySession(fs as any, {
+          storyId: outFixed.storyId,
+          uid: auth.uid,
+          title: meta.title ?? outFixed.title,
+          lang: meta.lang ?? body.storyLang ?? lang,
+          ageGroup: meta.ageGroup ?? body.ageGroup,
+          storyLength: meta.storyLength ?? body.storyLength,
+          creativityLevel: meta.creativityLevel ?? body.creativityLevel,
+          hero: meta.hero ?? body.selection?.hero,
+          location: meta.location ?? body.selection?.location,
+          style: meta.style ?? body.selection?.style,
+          idea: meta.idea ?? body.idea,
+          policyVersion: meta.policyVersion ?? 'v1',
+          chapters: nextChapters,
+        }),
+      );
 
       await store.writeAudit(fs as any, {
         requestId: outFixed.requestId,
@@ -1168,7 +1248,11 @@ export function createApp(
         { err: e, requestId: (res.locals as any)?.requestId ?? null, route, action: 'continue' },
         'continue failed',
       );
-      return respondError(res, 500, 'internal_error');
+      const requestId = (res.locals as any)?.requestId ?? newRequestId();
+      return respondError(res, 503, 'internal_error', {
+        requestId,
+        errShort: toUpstreamErrorMessageShort(e),
+      });
     }
   }
 
@@ -1286,7 +1370,13 @@ export function createApp(
       if (!fs) throw new AppError({ status: 503, code: 'STORE_UNAVAILABLE', safeMessage: 'Service temporarily disabled' });
 
       try {
-        await store.enforceDailyLimit(fs as any, { uid: auth.uid, limit: policy.daily_story_limit, yyyymmdd: yyyymmdd(new Date()) });
+        await withStore(() =>
+          store.enforceDailyLimit(fs as any, {
+            uid: auth.uid,
+            limit: policy.daily_story_limit,
+            yyyymmdd: yyyymmdd(new Date()),
+          }),
+        );
       } catch (e: any) {
         if (String(e?.message ?? '').includes('DAILY_LIMIT_EXCEEDED')) {
           await store
@@ -1301,10 +1391,10 @@ export function createApp(
             .catch(() => undefined);
           return respondError(res, 429, 'daily_limit_exceeded', { requestId, storyId: body.storyId });
         }
-        throw e;
+        throw toStoreUnavailable(e);
       }
 
-      const meta = await store.getStoryMeta(fs as any, body.storyId);
+      const meta = await withStore(() => store.getStoryMeta(fs as any, body.storyId));
       if (!meta) return respondError(res, 404, 'story_not_found', { requestId });
       if (meta.uid !== auth.uid) return respondError(res, 403, 'forbidden', { requestId });
 
@@ -1324,7 +1414,7 @@ export function createApp(
       );
       const idx = body.chapterIndex;
 
-      const chapter = await store.getStoryChapter(fs as any, body.storyId, idx);
+      const chapter = await withStore(() => store.getStoryChapter(fs as any, body.storyId, idx));
       if (!chapter) return respondError(res, 404, 'chapter_not_found', { requestId });
 
       const rawPrompt = body.prompt.toString().trim();
@@ -1596,13 +1686,15 @@ export function createApp(
         );
       }
 
-      await store.updateChapterIllustration(fs as any, {
-        storyId: body.storyId,
-        chapterIndex: idx,
-        imageUrl: uploadedUrl,
-        imageStoragePath: `gs://${env.storageBucket}/${uploadedPath}`,
-        imagePrompt: safePrompt,
-      });
+      await withStore(() =>
+        store.updateChapterIllustration(fs as any, {
+          storyId: body.storyId,
+          chapterIndex: idx,
+          imageUrl: uploadedUrl,
+          imageStoragePath: `gs://${env.storageBucket}/${uploadedPath}`,
+          imagePrompt: safePrompt,
+        }),
+      );
 
       await store.writeAudit(fs as any, {
         requestId,
@@ -1637,7 +1729,12 @@ export function createApp(
       if (e instanceof ZodError) return respondError(res, 400, 'invalid_request', { requestId });
       if (isAppError(e)) return res.status(e.status).json(toSafeErrorBody(e));
 
-      return res.status(503).json({ ok: false, error: 'image_pipeline_failed', requestId });
+      return res.status(503).json({
+        ok: false,
+        error: 'image_pipeline_failed',
+        requestId,
+        errShort: toUpstreamErrorMessageShort(e),
+      });
     }
   }
 

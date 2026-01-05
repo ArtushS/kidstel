@@ -75,6 +75,17 @@ function freshAppWithDeps(
   return createApp(merged, deps).app as any;
 }
 
+const noopStore = {
+  enforceDailyLimit: async () => undefined,
+  getStoryMeta: async () => null,
+  listStoryChapters: async () => [],
+  getStoryChapter: async () => null,
+  writeStoryChapter: async () => undefined,
+  updateChapterIllustration: async () => undefined,
+  upsertStorySession: async () => undefined,
+  writeAudit: async () => undefined,
+};
+
 test('missing auth token -> 401', async () => {
   const app = freshApp({ AUTH_REQUIRED: 'true', APPCHECK_REQUIRED: 'false' });
 
@@ -145,14 +156,30 @@ test('appcheck enforced on all story routes (placeholder -> 403)', async () => {
   }
 });
 
-test('strict schema rejects unknown fields -> 400', async () => {
+test('unknown extra fields are ignored (generate still succeeds)', async () => {
   const app = freshApp({ AUTH_REQUIRED: 'false', APPCHECK_REQUIRED: 'false' });
 
   const res = await request(app)
     .post('/')
     .send({ action: 'generate', storyLang: 'en', idea: 'Hello', selection: { hero: 'Cat' }, extra: 'nope' });
 
-  assert.equal(res.status, 400);
+  assert.equal(res.status, 200);
+  assert.equal(typeof res.body?.requestId, 'string');
+});
+
+test('storyLang aliases like ru-RU are normalized', async () => {
+  const app = freshApp({ AUTH_REQUIRED: 'false', APPCHECK_REQUIRED: 'false' });
+
+  const res = await request(app)
+    .post('/')
+    .send({
+      action: 'generate',
+      storyLang: 'ru-RU',
+      selection: { hero: 'Cat' },
+    });
+
+  assert.equal(res.status, 200);
+  assert.equal(typeof res.body?.storyId, 'string');
 });
 
 test('missing action -> 400 action_required', async () => {
@@ -799,4 +826,82 @@ test('policy loader firestore error -> fail-closed (503)', async () => {
   assert.equal(res.status, 503);
   assert.equal(res.body?.error, 'Service temporarily disabled');
   assert.equal(res.body?.code, 'POLICY_UNAVAILABLE');
+});
+
+test('store failures during generate return 503 STORE_UNAVAILABLE', async () => {
+  const app = freshAppWithDeps(
+    {
+      AUTH_REQUIRED: 'false',
+      APPCHECK_REQUIRED: 'false',
+      STORE_DISABLED: 'false',
+    },
+    {
+      firestore: {} as any,
+      engine: {
+        generateCreateResponse: async () => ({
+          requestId: 'req_test',
+          storyId: 'story_test',
+          chapterIndex: 0,
+          progress: 0.2,
+          title: 'Hello',
+          text: 'World',
+          image: { enabled: false, url: null },
+          choices: [],
+        }),
+      },
+      store: {
+        ...noopStore,
+        enforceDailyLimit: async () => {
+          throw new Error('firestore_unavailable');
+        },
+      },
+    },
+  );
+
+  const res = await request(app)
+    .post('/')
+    .send({ action: 'generate', storyLang: 'en', selection: { hero: 'Cat' } });
+
+  assert.equal(res.status, 503);
+  assert.equal(res.body?.code, 'STORE_UNAVAILABLE');
+  assert.equal(res.body?.error, 'Service temporarily disabled');
+});
+
+test('store failures after generation are surfaced as 503', async () => {
+  const app = freshAppWithDeps(
+    {
+      AUTH_REQUIRED: 'false',
+      APPCHECK_REQUIRED: 'false',
+      STORE_DISABLED: 'false',
+    },
+    {
+      firestore: {} as any,
+      engine: {
+        generateCreateResponse: async () => ({
+          requestId: 'req_test',
+          storyId: 'story_test',
+          chapterIndex: 0,
+          progress: 0.5,
+          title: 'Hello',
+          text: 'World',
+          image: { enabled: false, url: null },
+          choices: [],
+        }),
+      },
+      store: {
+        ...noopStore,
+        upsertStorySession: async () => {
+          throw new Error('write_failed');
+        },
+      },
+    },
+  );
+
+  const res = await request(app)
+    .post('/')
+    .send({ action: 'generate', storyLang: 'en', selection: { hero: 'Cat' } });
+
+  assert.equal(res.status, 503);
+  assert.equal(res.body?.code, 'STORE_UNAVAILABLE');
+  assert.equal(res.body?.error, 'Service temporarily disabled');
 });
