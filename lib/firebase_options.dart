@@ -25,10 +25,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
         return windows;
       case TargetPlatform.linux:
@@ -45,7 +42,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyA8mJIo4a-tLnhr2tblBUJn-TgEsE3vVWM',
-    appId: '1:924507937416:web:d5a2deec831f26e3ef5d3d',
+    appId: '1:924507937416:web:8fd0943d92e90591ef5d3d',
     messagingSenderId: '924507937416',
     projectId: 'kids-tell-d0ks8m',
     authDomain: 'kids-tell-d0ks8m.firebaseapp.com',
@@ -54,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAE5VWehuvDsLdzT3FKKnWwrXBhIJ841vc',
-    appId: '1:924507937416:android:72dfc995deeb087fef5d3d',
+    appId: '1:924507937416:android:b7d82266c8678a72ef5d3d',
     messagingSenderId: '924507937416',
     projectId: 'kids-tell-d0ks8m',
     storageBucket: 'kids-tell-d0ks8m.firebasestorage.app',
@@ -62,21 +59,29 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBnKGE0X2Q5SBLDimKwd9ldmfSqtrUBTi0',
-    appId: '1:924507937416:ios:1f7292d175bc426cef5d3d',
+    appId: '1:924507937416:ios:9785c07c75e4b889ef5d3d',
     messagingSenderId: '924507937416',
     projectId: 'kids-tell-d0ks8m',
     storageBucket: 'kids-tell-d0ks8m.firebasestorage.app',
-    // NOTE(rename): This should match the iOS bundle id after renaming.
-    // If you re-run `flutterfire configure`, it will regenerate this file.
     iosBundleId: 'com.fairycraft.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyA8mJIo4a-tLnhr2tblBUJn-TgEsE3vVWM',
-    appId: '1:924507937416:web:8fd0943d92e90591ef5d3d',
+    appId: '1:924507937416:web:e7c1167aeac4bebbef5d3d',
     messagingSenderId: '924507937416',
     projectId: 'kids-tell-d0ks8m',
     authDomain: 'kids-tell-d0ks8m.firebaseapp.com',
     storageBucket: 'kids-tell-d0ks8m.firebasestorage.app',
   );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyBnKGE0X2Q5SBLDimKwd9ldmfSqtrUBTi0',
+    appId: '1:924507937416:ios:1f7292d175bc426cef5d3d',
+    messagingSenderId: '924507937416',
+    projectId: 'kids-tell-d0ks8m',
+    storageBucket: 'kids-tell-d0ks8m.firebasestorage.app',
+    iosBundleId: 'com.example.kidsdom',
+  );
+
 }

@@ -26,6 +26,25 @@
     },
     {
       "client_info": {
+        "mobilesdk_app_id": "1:924507937416:android:b7d82266c8678a72ef5d3d",
+        "android_client_info": {
+          "package_name": "com.fairycraft.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAE5VWehuvDsLdzT3FKKnWwrXBhIJ841vc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:924507937416:android:f2b4806d7cd99269ef5d3d",
         "android_client_info": {
           "package_name": "com.mycompany.kidstel"
