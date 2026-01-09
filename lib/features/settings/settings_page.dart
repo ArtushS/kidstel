@@ -37,17 +37,6 @@ class SettingsPage extends StatelessWidget {
 
   String _fontLabel(BuildContext context, FontScale v) => v.localized(context);
 
-  String _ageLabel(BuildContext context, AgeGroup v) => v.localized(context);
-
-  String _lengthLabel(BuildContext context, StoryLength v) =>
-      v.localized(context);
-
-  String _complexityLabel(BuildContext context, StoryComplexity v) =>
-      v.localized(context);
-
-  String _creativityLabel(BuildContext context, CreativityLevel v) =>
-      v.localized(context);
-
   Future<T?> _pickEnum<T>({
     required BuildContext context,
     required String title,
@@ -141,7 +130,6 @@ class SettingsPage extends StatelessWidget {
         _languages[s.defaultLanguageCode] ?? s.defaultLanguageCode;
 
     final t = AppLocalizations.of(context);
-    final l10n = AppLocalizations.of(context)!;
 
     // Fallback на случай, если локализация ещё не подхватилась (редко, но безопасно)
     final titleSettings = t?.settings ?? 'Settings';
@@ -149,7 +137,6 @@ class SettingsPage extends StatelessWidget {
     final titleTheme = t?.theme ?? 'Theme';
     final titleFontSize = t?.fontSize ?? 'Font size';
     final titleAnimations = t?.animations ?? 'Animations';
-    final titleStoryPrefs = t?.storyPreferences ?? 'Story preferences';
     final titleLanguage = t?.language ?? 'Language';
 
     return PopScope(
@@ -216,77 +203,8 @@ class SettingsPage extends StatelessWidget {
             ),
 
             SettingsSection(
-              title: titleStoryPrefs,
+              title: titleLanguage,
               children: [
-                _HeroNameTile(
-                  value: s.heroName,
-                  label: l10n.heroNameLabel,
-                  hint: l10n.heroNameHint,
-                  helper: l10n.heroNameHelper,
-                  onChanged: (v) {
-                    controller.setHeroName(v);
-                  },
-                ),
-                ChoiceTile<AgeGroup>(
-                  leading: const Icon(Icons.cake_outlined),
-                  title: t?.ageGroup ?? 'Age group',
-                  valueLabel: _ageLabel(context, s.ageGroup),
-                  onTap: () async {
-                    final picked = await _pickEnum<AgeGroup>(
-                      context: context,
-                      title: t?.ageGroup ?? 'Age group',
-                      current: s.ageGroup,
-                      values: AgeGroup.values,
-                      label: (v) => _ageLabel(context, v),
-                    );
-                    if (picked != null) {
-                      await controller.setAgeGroup(picked);
-                    }
-                  },
-                ),
-                ChoiceTile<StoryLength>(
-                  leading: const Icon(Icons.subject_outlined),
-                  title: t?.storyLength ?? 'Story length',
-                  valueLabel: _lengthLabel(context, s.storyLength),
-                  onTap: () async {
-                    final picked = await _pickEnum<StoryLength>(
-                      context: context,
-                      title: t?.storyLength ?? 'Story length',
-                      current: s.storyLength,
-                      values: StoryLength.values,
-                      label: (v) => _lengthLabel(context, v),
-                    );
-                    if (picked != null) {
-                      await controller.setStoryLength(picked);
-                    }
-                  },
-                ),
-                ChoiceTile<StoryComplexity>(
-                  leading: const Icon(Icons.tune_outlined),
-                  title: t?.complexity ?? 'Complexity',
-                  valueLabel: _complexityLabel(context, s.storyComplexity),
-                  onTap: () async {
-                    final picked = await _pickEnum<StoryComplexity>(
-                      context: context,
-                      title: t?.complexity ?? 'Complexity',
-                      current: s.storyComplexity,
-                      values: StoryComplexity.values,
-                      label: (v) => _complexityLabel(context, v),
-                    );
-                    if (picked != null) {
-                      await controller.setStoryComplexity(picked);
-                    }
-                  },
-                ),
-                SwitchTile(
-                  leading: const Icon(Icons.interests_outlined),
-                  title: t?.interactiveStories ?? 'Enable interactive stories',
-                  subtitle:
-                      t?.interactiveStoriesSubtitle ??
-                      'Show choices (up to 3 steps) to continue the story',
-                  value: s.interactiveStoriesEnabled,
-                  onChanged: controller.setInteractiveStoriesEnabled,
-                ),
                 ChoiceTile<String>(
                   leading: const Icon(Icons.language_outlined),
                   title: titleLanguage,
@@ -331,84 +249,6 @@ class SettingsPage extends StatelessWidget {
                   subtitle: t?.comingSoon ?? 'Coming soon',
                   trailing: const Icon(Icons.lock_outline),
                   onTap: () {},
-                ),
-              ],
-            ),
-
-            SettingsSection(
-              title: l10n.family,
-              children: [
-                SwitchTile(
-                  leading: const Icon(Icons.family_restroom_outlined),
-                  title: l10n.familyEnabled,
-                  value: s.familyEnabled,
-                  onChanged: controller.setFamilyEnabled,
-                ),
-                _FamilyMemberTextTile(
-                  value: s.grandfatherName,
-                  label: l10n.grandfather,
-                  hint: l10n.familyNameHint,
-                  helper: l10n.familyNameHelper,
-                  onChanged: controller.setGrandfatherName,
-                ),
-                _FamilyMemberTextTile(
-                  value: s.grandmotherName,
-                  label: l10n.grandmother,
-                  hint: l10n.familyNameHint,
-                  helper: l10n.familyNameHelper,
-                  onChanged: controller.setGrandmotherName,
-                ),
-                _FamilyMemberTextTile(
-                  value: s.fatherName,
-                  label: l10n.father,
-                  hint: l10n.familyNameHint,
-                  helper: l10n.familyNameHelper,
-                  onChanged: controller.setFatherName,
-                ),
-                _FamilyMemberTextTile(
-                  value: s.motherName,
-                  label: l10n.mother,
-                  hint: l10n.familyNameHint,
-                  helper: l10n.familyNameHelper,
-                  onChanged: controller.setMotherName,
-                ),
-                _DynamicNamesListTile(
-                  title: l10n.brothers,
-                  addLabel: l10n.addBrother,
-                  values: s.brothers,
-                  hint: l10n.familyNameHint,
-                  helper: l10n.familyNameHelper,
-                  removeLabel: l10n.remove,
-                  onAdd: () =>
-                      controller.setBrothers([...s.brothers, '']),
-                  onRemove: (index) {
-                    final next = [...s.brothers]..removeAt(index);
-                    controller.setBrothers(next);
-                  },
-                  onChanged: (index, value) {
-                    final next = [...s.brothers];
-                    next[index] = value;
-                    controller.setBrothers(next);
-                  },
-                ),
-                _DynamicNamesListTile(
-                  title: l10n.sisters,
-                  addLabel: l10n.addSister,
-                  values: s.sisters,
-                  hint: l10n.familyNameHint,
-                  helper: l10n.familyNameHelper,
-                  removeLabel: l10n.remove,
-                  onAdd: () =>
-                      controller.setSisters([...s.sisters, '']),
-                  onRemove: (index) {
-                    final next = [...s.sisters]..removeAt(index);
-                    controller.setSisters(next);
-                  },
-                  onChanged: (index, value) {
-                    final next = [...s.sisters];
-                    next[index] = value;
-                    controller.setSisters(next);
-                  },
                 ),
               ],
             ),
@@ -476,43 +316,6 @@ class SettingsPage extends StatelessWidget {
             ),
 
             SettingsSection(
-              title: t?.aiGeneration ?? 'AI & Generation',
-              children: [
-                SwitchTile(
-                  leading: const Icon(Icons.image_outlined),
-                  title:
-                      t?.autoGenerateIllustrations ??
-                      'Auto-generate illustrations',
-                  value: s.autoIllustrations,
-                  onChanged: controller.setAutoIllustrations,
-                ),
-                ChoiceTile<CreativityLevel>(
-                  leading: const Icon(Icons.auto_awesome_outlined),
-                  title: t?.creativityLevel ?? 'Creativity level',
-                  valueLabel: _creativityLabel(context, s.creativityLevel),
-                  onTap: () async {
-                    final picked = await _pickEnum<CreativityLevel>(
-                      context: context,
-                      title: t?.creativityLevel ?? 'Creativity level',
-                      current: s.creativityLevel,
-                      values: CreativityLevel.values,
-                      label: (v) => _creativityLabel(context, v),
-                    );
-                    if (picked != null) {
-                      await controller.setCreativityLevel(picked);
-                    }
-                  },
-                ),
-                SwitchTile(
-                  leading: const Icon(Icons.save_outlined),
-                  title: t?.rememberPreferences ?? 'Remember preferences',
-                  value: s.rememberPreferences,
-                  onChanged: controller.setRememberPreferences,
-                ),
-              ],
-            ),
-
-            SettingsSection(
               title: t?.system ?? 'System',
               children: [
                 SettingsTile(
@@ -566,237 +369,6 @@ class SettingsPage extends StatelessWidget {
             const SizedBox(height: 24),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _HeroNameTile extends StatefulWidget {
-  final String? value;
-  final String label;
-  final String hint;
-  final String helper;
-  final ValueChanged<String> onChanged;
-
-  const _HeroNameTile({
-    required this.value,
-    required this.label,
-    required this.hint,
-    required this.helper,
-    required this.onChanged,
-  });
-
-  @override
-  State<_HeroNameTile> createState() => _HeroNameTileState();
-}
-
-class _HeroNameTileState extends State<_HeroNameTile> {
-  late final TextEditingController _ctrl;
-  final FocusNode _focus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = TextEditingController(text: widget.value ?? '');
-  }
-
-  @override
-  void didUpdateWidget(covariant _HeroNameTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final nextText = widget.value ?? '';
-    if (!_focus.hasFocus && _ctrl.text != nextText) {
-      _ctrl.text = nextText;
-    }
-  }
-
-  @override
-  void dispose() {
-    _focus.dispose();
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return ListTile(
-      leading: const Icon(Icons.person_outline),
-      title: Text(widget.label),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.helper,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _ctrl,
-              focusNode: _focus,
-              decoration: InputDecoration(hintText: widget.hint, isDense: true),
-              onChanged: widget.onChanged,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FamilyMemberTextTile extends StatefulWidget {
-  final String? value;
-  final String label;
-  final String hint;
-  final String helper;
-  final ValueChanged<String> onChanged;
-  final VoidCallback? onRemove;
-  final String? removeLabel;
-
-  const _FamilyMemberTextTile({
-    super.key,
-    required this.value,
-    required this.label,
-    required this.hint,
-    required this.helper,
-    required this.onChanged,
-    this.onRemove,
-    this.removeLabel,
-  });
-
-  @override
-  State<_FamilyMemberTextTile> createState() => _FamilyMemberTextTileState();
-}
-
-class _FamilyMemberTextTileState extends State<_FamilyMemberTextTile> {
-  late final TextEditingController _ctrl;
-  final FocusNode _focus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = TextEditingController(text: widget.value ?? '');
-  }
-
-  @override
-  void didUpdateWidget(covariant _FamilyMemberTextTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final nextText = widget.value ?? '';
-    if (!_focus.hasFocus && _ctrl.text != nextText) {
-      _ctrl.text = nextText;
-    }
-  }
-
-  @override
-  void dispose() {
-    _focus.dispose();
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return ListTile(
-      title: Text(widget.label),
-      trailing: widget.onRemove == null
-          ? null
-          : IconButton(
-              tooltip: widget.removeLabel,
-              icon: const Icon(Icons.delete_outline),
-              onPressed: widget.onRemove,
-            ),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.helper,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _ctrl,
-              focusNode: _focus,
-              decoration: InputDecoration(hintText: widget.hint, isDense: true),
-              onChanged: widget.onChanged,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DynamicNamesListTile extends StatelessWidget {
-  final String title;
-  final String addLabel;
-  final List<String> values;
-  final String hint;
-  final String helper;
-  final String removeLabel;
-  final VoidCallback onAdd;
-  final void Function(int index) onRemove;
-  final void Function(int index, String value) onChanged;
-
-  const _DynamicNamesListTile({
-    required this.title,
-    required this.addLabel,
-    required this.values,
-    required this.hint,
-    required this.helper,
-    required this.removeLabel,
-    required this.onAdd,
-    required this.onRemove,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Text(
-              title,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          for (var i = 0; i < values.length; i++)
-            _FamilyMemberTextTile(
-              key: ValueKey('$title-$i'),
-              value: values[i],
-              label: '$title ${i + 1}',
-              hint: hint,
-              helper: helper,
-              removeLabel: removeLabel,
-              onChanged: (value) => onChanged(i, value),
-              onRemove: () => onRemove(i),
-            ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: Text(addLabel),
-            ),
-          ),
-        ],
       ),
     );
   }

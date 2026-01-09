@@ -543,6 +543,16 @@ class _StorySetupPageState extends State<StorySetupPage> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.auto_awesome_outlined),
+              title: Text(AppLocalizations.of(context)!.storiesHub),
+              onTap: () {
+                Navigator.pop(context);
+                // push, not go: must return back to Create New Story
+                // without losing the current draft.
+                context.push('/story-preferences');
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.settings_outlined),
               title: Text(AppLocalizations.of(context)!.settings),
               onTap: () {
@@ -1068,9 +1078,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
                         value: familyEnabled,
                         onChanged: (value) {
                           setState(() => _familyStoryEnabled = value);
-                          SettingsScope.of(
-                            context,
-                          ).setFamilyEnabled(value);
+                          SettingsScope.of(context).setFamilyEnabled(value);
                         },
                       ),
                       const SizedBox(height: 16),

@@ -96,6 +96,14 @@ class AppSettings {
   final StoryComplexity storyComplexity;
   final String defaultLanguageCode;
 
+  /// Флаг прохождения онбординга предпочтений.
+  ///
+  /// Важно про миграции:
+  /// - Для новых установок (defaults) он `false`, чтобы гайд показался.
+  /// - Для старых установок, где поля ещё нет в JSON, мы считаем онбординг
+  ///   завершённым (см. fromJson), чтобы не ломать UX обновлением.
+  final bool onboardingCompleted;
+
   /// Optional field used to name the main hero. Empty string is allowed;
   /// null means "not set".
   final String? heroName;
@@ -146,6 +154,7 @@ class AppSettings {
     required this.storyLength,
     required this.storyComplexity,
     required this.defaultLanguageCode,
+    required this.onboardingCompleted,
     required this.heroName,
     required this.familyEnabled,
     required this.grandfatherName,
@@ -209,6 +218,7 @@ class AppSettings {
     storyLength: StoryLength.medium,
     storyComplexity: StoryComplexity.normal,
     defaultLanguageCode: 'en',
+    onboardingCompleted: false,
     heroName: null,
     familyEnabled: false,
     grandfatherName: null,
@@ -246,6 +256,7 @@ class AppSettings {
     StoryLength? storyLength,
     StoryComplexity? storyComplexity,
     String? defaultLanguageCode,
+    bool? onboardingCompleted,
     String? heroName,
     bool? familyEnabled,
     String? grandfatherName,
@@ -279,6 +290,7 @@ class AppSettings {
       storyLength: storyLength ?? this.storyLength,
       storyComplexity: storyComplexity ?? this.storyComplexity,
       defaultLanguageCode: defaultLanguageCode ?? this.defaultLanguageCode,
+      onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       heroName: heroName ?? this.heroName,
       familyEnabled: familyEnabled ?? this.familyEnabled,
       grandfatherName: grandfatherName ?? this.grandfatherName,
@@ -319,6 +331,7 @@ class AppSettings {
     'storyLength': storyLength.name,
     'storyComplexity': storyComplexity.name,
     'defaultLanguageCode': defaultLanguageCode,
+    'onboardingCompleted': onboardingCompleted,
     'heroName': heroName,
     'familyEnabled': familyEnabled,
     'grandfatherName': grandfatherName,
@@ -398,6 +411,13 @@ class AppSettings {
         StoryComplexity.normal,
       ),
       defaultLanguageCode: (json['defaultLanguageCode'] ?? 'en') as String,
+      onboardingCompleted: (() {
+        // Миграция: старые версии не имели этого поля.
+        // Чтобы обновление не выкидывало пользователя в гайд неожиданно,
+        // считаем онбординг пройденным, если поле отсутствует.
+        if (!json.containsKey('onboardingCompleted')) return true;
+        return (json['onboardingCompleted'] ?? false) as bool;
+      })(),
       heroName: (() {
         // Migration: older versions stored this setting under "childName".
         final raw = json['heroName'] ?? json['childName'];

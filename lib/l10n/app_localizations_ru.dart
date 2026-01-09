@@ -45,6 +45,27 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settings => 'Настройки';
 
   @override
+  String get storiesHub => 'Истории';
+
+  @override
+  String get onboarding => 'Гайд';
+
+  @override
+  String get guide => 'Гайд';
+
+  @override
+  String get restartGuide => 'Пройти гайд заново';
+
+  @override
+  String get skip => 'Пропустить';
+
+  @override
+  String get next => 'Далее';
+
+  @override
+  String get finish => 'Готово';
+
+  @override
   String get appearance => 'Внешний вид';
 
   @override

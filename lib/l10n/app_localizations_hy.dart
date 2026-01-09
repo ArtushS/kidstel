@@ -45,6 +45,27 @@ class AppLocalizationsHy extends AppLocalizations {
   String get settings => 'Կարգավորումներ';
 
   @override
+  String get storiesHub => 'Պատմություններ';
+
+  @override
+  String get onboarding => 'Ուղեցույց';
+
+  @override
+  String get guide => 'Ուղեցույց';
+
+  @override
+  String get restartGuide => 'Վերսկսել ուղեցույցը';
+
+  @override
+  String get skip => 'Բաց թողնել';
+
+  @override
+  String get next => 'Հաջորդը';
+
+  @override
+  String get finish => 'Ավարտել';
+
+  @override
   String get appearance => 'Տեսք';
 
   @override

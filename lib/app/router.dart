@@ -12,16 +12,19 @@ import '../auth/presentation/reset_password_sent_page.dart';
 import '../auth/presentation/account_page.dart';
 import '../auth/presentation/change_password_page.dart';
 import '../auth/presentation/provider_link_page.dart';
-import '../features/home/home_page.dart';
+import '../features/home/home_gate_page.dart';
 import '../features/story_setup/story_setup_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/settings/voice_help_page.dart';
 import '../features/my_stories/my_stories_page.dart';
 import '../features/debug/firebase_sanity_page.dart';
+import '../features/onboarding/story_preferences_onboarding_page.dart';
+import '../features/story_preferences/story_preferences_page.dart';
 import '../shared/models/family_profile.dart';
 import '../shared/models/story_setup.dart';
 import '../features/story_reader/story_reader_args.dart';
 import '../features/story_reader/story_reader_page.dart';
+import '../shared/settings/settings_scope.dart';
 
 GoRouter buildRouter({required AuthController auth}) {
   String? redirect(BuildContext context, GoRouterState state) {
@@ -49,7 +52,25 @@ GoRouter buildRouter({required AuthController auth}) {
 
     if (status == AuthStatus.authenticated) {
       // Keep authenticated users out of auth flow.
-      return isAuthFlowRoute || loc == '/auth' ? '/' : null;
+      if (isAuthFlowRoute || loc == '/auth') return '/';
+
+      // Первый запуск: после логина, но до Home.
+      // Важно: проверяем только при заходе на '/', чтобы не ломать deep-links.
+      if (loc == '/') {
+        dynamic settings;
+        try {
+          settings = SettingsScope.read(context);
+        } catch (_) {
+          settings = null;
+        }
+
+        if (settings != null && settings.isLoaded) {
+          final done = settings.settings.onboardingCompleted;
+          if (!done) return '/onboarding';
+        }
+      }
+
+      return null;
     }
 
     return null;
@@ -99,8 +120,19 @@ GoRouter buildRouter({required AuthController auth}) {
             const MaterialPage(child: ProviderLinkPage()),
       ),
       GoRoute(
+        path: '/onboarding',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: StoryPreferencesOnboardingPage()),
+      ),
+      GoRoute(
         path: '/',
-        pageBuilder: (context, state) => const MaterialPage(child: HomePage()),
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: HomeGatePage()),
+      ),
+      GoRoute(
+        path: '/story-preferences',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: StoryPreferencesPage()),
       ),
       GoRoute(
         path: '/setup',

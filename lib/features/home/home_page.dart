@@ -19,9 +19,14 @@ class HomePage extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
-            tooltip: 'Account',
+            tooltip: t.account,
             icon: const Icon(Icons.account_circle_outlined),
             onPressed: () => context.push('/account'),
+          ),
+          IconButton(
+            tooltip: t.storyPreferences,
+            icon: const Icon(Icons.auto_awesome_outlined),
+            onPressed: () => context.push('/story-preferences'),
           ),
           IconButton(
             tooltip: t.settings,

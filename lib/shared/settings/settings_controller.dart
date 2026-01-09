@@ -50,6 +50,9 @@ class SettingsController extends ChangeNotifier {
   Future<void> setDefaultLanguageCode(String code) =>
       _update(_settings.copyWith(defaultLanguageCode: code));
 
+  Future<void> setOnboardingCompleted(bool value) =>
+      _update(_settings.copyWith(onboardingCompleted: value));
+
   Future<void> setHeroName(String? value) =>
       _update(_settings.copyWith(heroName: value));
 

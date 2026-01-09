@@ -45,6 +45,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings => 'Settings';
 
   @override
+  String get storiesHub => 'Stories';
+
+  @override
+  String get onboarding => 'Onboarding';
+
+  @override
+  String get guide => 'Guide';
+
+  @override
+  String get restartGuide => 'Restart guide';
+
+  @override
+  String get skip => 'Skip';
+
+  @override
+  String get next => 'Next';
+
+  @override
+  String get finish => 'Done';
+
+  @override
   String get appearance => 'Appearance';
 
   @override

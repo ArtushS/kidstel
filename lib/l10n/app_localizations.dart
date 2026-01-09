@@ -172,6 +172,48 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get settings;
 
+  /// No description provided for @storiesHub.
+  ///
+  /// In en, this message translates to:
+  /// **'Stories'**
+  String get storiesHub;
+
+  /// No description provided for @onboarding.
+  ///
+  /// In en, this message translates to:
+  /// **'Onboarding'**
+  String get onboarding;
+
+  /// No description provided for @guide.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide'**
+  String get guide;
+
+  /// No description provided for @restartGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart guide'**
+  String get restartGuide;
+
+  /// No description provided for @skip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get skip;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @finish.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get finish;
+
   /// No description provided for @appearance.
   ///
   /// In en, this message translates to:

@@ -1,6 +1,13 @@
 {
   "@@locale": "hy",
   "settings": "Կարգավորումներ",
+  "storiesHub": "Պատմություններ",
+  "onboarding": "Ուղեցույց",
+  "guide": "Ուղեցույց",
+  "restartGuide": "Վերսկսել ուղեցույցը",
+  "skip": "Բաց թողնել",
+  "next": "Հաջորդը",
+  "finish": "Ավարտել",
   "appearance": "Տեսք",
   "theme": "Թեմա",
   "fontSize": "Տառաչափ",
