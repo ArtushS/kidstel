@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,8 @@ import '../../shared/voice/voice_input_controller.dart';
 import '../../shared/voice/open_system_settings.dart';
 
 import '../../shared/settings/settings_scope.dart';
+import '../../shared/settings/app_settings.dart';
+import '../../shared/models/family_profile.dart';
 import '../../shared/models/story_setup.dart';
 import '../../shared/models/story_setup_catalog_item.dart';
 import '../../shared/widgets/network_icon.dart';
@@ -23,12 +26,11 @@ class StorySetupPage extends StatefulWidget {
   State<StorySetupPage> createState() => _StorySetupPageState();
 }
 
+enum _CatalogStatus { idle, loading, ready, error }
+
 class _StorySetupPageState extends State<StorySetupPage> {
-  // IMPORTANT: must be HTTPS. Replace with your own hosted asset if needed.
-  // This is a public CDN URL (Twemoji). For production, prefer hosting the
-  // dice icon in your own Firebase Storage and using its https download URL.
-  static const String _diceIconUrl =
-      'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3b2.png';
+  // Stored in Firebase Storage (see cms_uploads/dice.png).
+  static const String _diceIconUrl = 'cms_uploads/dice.png';
 
   final _ideaCtrl = TextEditingController();
   final _ideaFocus = FocusNode();
@@ -55,47 +57,82 @@ class _StorySetupPageState extends State<StorySetupPage> {
       const <StorySetupCatalogItem>[];
   List<StorySetupCatalogItem> _typeCatalog = const <StorySetupCatalogItem>[];
 
+  _CatalogStatus _heroStatus = _CatalogStatus.idle;
+  _CatalogStatus _locationStatus = _CatalogStatus.idle;
+  _CatalogStatus _typeStatus = _CatalogStatus.idle;
+
+  bool? _familyStoryEnabled;
+
   Future<void> _loadCatalogs(Locale locale) async {
+    if (kDebugMode) {
+      debugPrint(
+        '[StorySetupPage] loading catalogs for locale=${locale.toLanguageTag()}…',
+      );
+    }
+
+    unawaited(_loadHeroes(locale));
+    unawaited(_loadLocations(locale));
+    unawaited(_loadTypes(locale));
+  }
+
+  Future<void> _loadHeroes(Locale locale) async {
+    if (!mounted) return;
+    setState(() => _heroStatus = _CatalogStatus.loading);
     try {
-      if (kDebugMode) {
-        debugPrint(
-          '[StorySetupPage] loading catalogs for locale=${locale.toLanguageTag()}…',
-        );
-      }
-
       final heroes = await _catalogRepo.loadHeroes(locale: locale);
-      final locations = await _catalogRepo.loadLocations(locale: locale);
-      final types = await _catalogRepo.loadTypes(locale: locale);
-
-      if (kDebugMode) {
-        debugPrint(
-          '[StorySetupPage] catalogs loaded: heroes=${heroes.length} locations=${locations.length} types=${types.length}',
-        );
-      }
-
-      if (kDebugMode && heroes.isEmpty && locations.isEmpty && types.isEmpty) {
-        debugPrint(
-          '[StorySetupPage] catalogs are empty in Firestore; using built-in fallback items (Storage paths) so carousels are usable.',
-        );
-      }
-
       if (!mounted) return;
       setState(() {
         _heroCatalog = heroes;
-        _locationCatalog = locations;
-        _typeCatalog = types;
-      });
-
-      // After catalogs load (or remain empty and we fall back), log readiness once.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _debugLogCanGenerateIfChanged(context, hint: 'afterCatalogLoad');
+        _heroStatus = _CatalogStatus.ready;
       });
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[StorySetupPage] catalog load FAILED: $e');
+        debugPrint('[StorySetupPage] hero catalog load FAILED: $e');
       }
+      if (!mounted) return;
+      setState(() => _heroStatus = _CatalogStatus.error);
     }
+    _debugLogCanGenerateIfChanged(context, hint: 'afterHeroCatalogLoad');
+  }
+
+  Future<void> _loadLocations(Locale locale) async {
+    if (!mounted) return;
+    setState(() => _locationStatus = _CatalogStatus.loading);
+    try {
+      final locations = await _catalogRepo.loadLocations(locale: locale);
+      if (!mounted) return;
+      setState(() {
+        _locationCatalog = locations;
+        _locationStatus = _CatalogStatus.ready;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[StorySetupPage] location catalog load FAILED: $e');
+      }
+      if (!mounted) return;
+      setState(() => _locationStatus = _CatalogStatus.error);
+    }
+    _debugLogCanGenerateIfChanged(context, hint: 'afterLocationCatalogLoad');
+  }
+
+  Future<void> _loadTypes(Locale locale) async {
+    if (!mounted) return;
+    setState(() => _typeStatus = _CatalogStatus.loading);
+    try {
+      final types = await _catalogRepo.loadTypes(locale: locale);
+      if (!mounted) return;
+      setState(() {
+        _typeCatalog = types;
+        _typeStatus = _CatalogStatus.ready;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[StorySetupPage] type catalog load FAILED: $e');
+      }
+      if (!mounted) return;
+      setState(() => _typeStatus = _CatalogStatus.error);
+    }
+    _debugLogCanGenerateIfChanged(context, hint: 'afterTypeCatalogLoad');
   }
 
   Future<void> _warmUpIcons() async {
@@ -134,37 +171,37 @@ class _StorySetupPageState extends State<StorySetupPage> {
       _PickItem(
         id: 'hero_boy',
         title: boyTitle,
-        iconUrl: 'heroes_icons/boy.png',
+        iconUrl: 'heroes_icons/character_boy.png',
       ),
       _PickItem(
         id: 'hero_girl',
         title: t.heroGirl,
-        iconUrl: 'heroes_icons/girl.png',
+        iconUrl: 'heroes_icons/character_girl.png',
       ),
       _PickItem(
         id: 'hero_dog',
         title: t.heroDog,
-        iconUrl: 'heroes_icons/dog.png',
+        iconUrl: 'heroes_icons/character_wolf.png',
       ),
       _PickItem(
         id: 'hero_cat',
         title: t.heroCat,
-        iconUrl: 'heroes_icons/cat.png',
+        iconUrl: 'heroes_icons/character_cat.png',
       ),
       _PickItem(
         id: 'hero_bear',
         title: t.heroBear,
-        iconUrl: 'heroes_icons/bear.png',
+        iconUrl: 'heroes_icons/character_bear.png',
       ),
       _PickItem(
         id: 'hero_fox',
         title: t.heroFox,
-        iconUrl: 'heroes_icons/fox.png',
+        iconUrl: 'heroes_icons/character_fox.png',
       ),
       _PickItem(
         id: 'hero_rabbit',
         title: t.heroRabbit,
-        iconUrl: 'heroes_icons/rabbit.png',
+        iconUrl: 'heroes_icons/character_unicorn.png',
       ),
     ]);
 
@@ -201,17 +238,17 @@ class _StorySetupPageState extends State<StorySetupPage> {
       _PickItem(
         id: 'loc_cozy',
         title: t.locationCozyCottage,
-        iconUrl: 'location_icons/forest.png',
+        iconUrl: 'location_icons/windmill_village.png',
       ),
       _PickItem(
         id: 'loc_island',
         title: t.locationFloatingIsland,
-        iconUrl: 'location_icons/space.png',
+        iconUrl: 'location_icons/sky_kingdom.png',
       ),
       _PickItem(
         id: 'loc_snow_castle',
         title: t.locationSnowCastle,
-        iconUrl: 'location_icons/snow_castle.png',
+        iconUrl: 'location_icons/ice_palace.png',
       ),
       _PickItem(
         id: 'loc_underwater',
@@ -249,7 +286,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
       _PickItem(
         id: 'type_friendly',
         title: t.typeFriendly,
-        iconUrl: 'styl_icons/friendship.png',
+        iconUrl: 'styl_icons/style_moon_fairy.png',
       ),
       _PickItem(
         id: 'type_adventure',
@@ -259,7 +296,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
       _PickItem(
         id: 'type_magic',
         title: t.typeMagic,
-        iconUrl: 'styl_icons/magic.png',
+        iconUrl: 'styl_icons/dark_magic.png',
       ),
       _PickItem(
         id: 'type_funny',
@@ -269,7 +306,7 @@ class _StorySetupPageState extends State<StorySetupPage> {
       _PickItem(
         id: 'type_romantic',
         title: t.typeRomantic,
-        iconUrl: 'styl_icons/friendship.png',
+        iconUrl: 'styl_icons/item_treasure_chest.png',
       ),
     ]);
 
@@ -348,6 +385,8 @@ class _StorySetupPageState extends State<StorySetupPage> {
     }
 
     _lastAppLangCode = appLang;
+
+    _familyStoryEnabled ??= SettingsScope.of(context).settings.familyEnabled;
   }
 
   @override
@@ -618,6 +657,44 @@ class _StorySetupPageState extends State<StorySetupPage> {
     return pool[r.nextInt(pool.length)];
   }
 
+  FamilyProfile _familyFromSettings({
+    required bool enabled,
+    required AppSettings settings,
+  }) {
+    return FamilyProfile(
+      enabled: enabled,
+      grandfatherName: settings.grandfatherName,
+      grandmotherName: settings.grandmotherName,
+      fatherName: settings.fatherName,
+      motherName: settings.motherName,
+      brothers: settings.brothers,
+      sisters: settings.sisters,
+    );
+  }
+
+  Widget _catalogStatusRow({
+    required _CatalogStatus status,
+    required VoidCallback onRetry,
+  }) {
+    if (status == _CatalogStatus.loading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 6, bottom: 10),
+        child: LinearProgressIndicator(minHeight: 2),
+      );
+    }
+    if (status == _CatalogStatus.error) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: TextButton.icon(
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh),
+          label: Text(AppLocalizations.of(context)!.retry),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
   String _mapAgeGroup(dynamic v) {
     final s = (v ?? '').toString().toLowerCase();
 
@@ -700,6 +777,10 @@ class _StorySetupPageState extends State<StorySetupPage> {
     }
 
     final settings = SettingsScope.of(context).settings;
+    final familyEnabled = _familyStoryEnabled ?? settings.familyEnabled;
+    final familyProfile = familyEnabled
+        ? _familyFromSettings(enabled: true, settings: settings)
+        : null;
 
     // Data-only setup object (for passing around / persistence later).
     // IMPORTANT: no service instances are passed through navigation.
@@ -714,7 +795,11 @@ class _StorySetupPageState extends State<StorySetupPage> {
       imageEnabled: false,
       hero: hero.title,
       location: loc.title,
+      locationImage: loc.iconUrl,
       storyType: type.title,
+      storyTypeImage: type.iconUrl,
+      familyEnabled: familyEnabled,
+      family: familyProfile?.toJson(),
       idea: ideaText.isNotEmpty ? ideaText : null,
     );
 
@@ -734,6 +819,10 @@ class _StorySetupPageState extends State<StorySetupPage> {
         'style': setup.storyType,
       },
     };
+    if (setup.family != null) {
+      body['familyEnabled'] = setup.familyEnabled;
+      body['family'] = setup.family;
+    }
 
     final idea = setup.idea?.trim();
     if (idea != null && idea.isNotEmpty) {
@@ -763,7 +852,11 @@ class _StorySetupPageState extends State<StorySetupPage> {
           'imageEnabled': setup.imageEnabled,
           'hero': setup.hero,
           'location': setup.location,
+          'locationImage': setup.locationImage,
           'storyType': setup.storyType,
+          'storyTypeImage': setup.storyTypeImage,
+          'familyEnabled': setup.familyEnabled,
+          'family': setup.family,
           // Bonus: pass the full data-only setup (including idea) for later use.
           'setup': setup,
         },
@@ -810,10 +903,13 @@ class _StorySetupPageState extends State<StorySetupPage> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final t = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context);
 
     // Avoid watching VoiceInputController in build: it would rebuild the whole page
     // on every partial result. We update only small UI parts via ValueNotifiers.
     final voice = context.read<VoiceInputController>();
+    final settings = SettingsScope.of(context).settings;
+    final familyEnabled = _familyStoryEnabled ?? settings.familyEnabled;
 
     final textPrimary = isDark ? Colors.white : Colors.black87;
     final textSecondary = isDark ? Colors.white70 : Colors.black54;
@@ -965,6 +1061,18 @@ class _StorySetupPageState extends State<StorySetupPage> {
                             ),
                           ),
                         ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(t.familyStory),
+                        value: familyEnabled,
+                        onChanged: (value) {
+                          setState(() => _familyStoryEnabled = value);
+                          SettingsScope.of(
+                            context,
+                          ).setFamilyEnabled(value);
+                        },
+                      ),
                       const SizedBox(height: 16),
                       ValueListenableBuilder<bool>(
                         valueListenable: _ideaModeVN,
@@ -1012,6 +1120,10 @@ class _StorySetupPageState extends State<StorySetupPage> {
                               isDark: isDark,
                             ),
                             const SizedBox(height: 16),
+                            _catalogStatusRow(
+                              status: _heroStatus,
+                              onRetry: () => _loadHeroes(locale),
+                            ),
                             _CarouselSection(
                               title: t.location,
                               subtitle: t.swipeToChoose,
@@ -1024,6 +1136,10 @@ class _StorySetupPageState extends State<StorySetupPage> {
                               isDark: isDark,
                             ),
                             const SizedBox(height: 16),
+                            _catalogStatusRow(
+                              status: _locationStatus,
+                              onRetry: () => _loadLocations(locale),
+                            ),
                             _CarouselSection(
                               title: t.storyType,
                               subtitle: t.swipeToChoose,
@@ -1034,6 +1150,11 @@ class _StorySetupPageState extends State<StorySetupPage> {
                                 setState(() => _typeIndex = i);
                               },
                               isDark: isDark,
+                            ),
+                            const SizedBox(height: 16),
+                            _catalogStatusRow(
+                              status: _typeStatus,
+                              onRetry: () => _loadTypes(locale),
                             ),
                           ],
                         ),
@@ -1478,33 +1599,13 @@ class _PickCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Center(
-                    child: item.id == 'loc_random'
-                        ? Container(
-                            width: imageSize,
-                            height: imageSize,
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : Colors.white.withValues(alpha: 0.45),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.auto_awesome_rounded,
-                                size: (imageSize * 0.55).clamp(22.0, 56.0),
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.92)
-                                    : Colors.black.withValues(alpha: 0.75),
-                              ),
-                            ),
-                          )
-                        : NetworkIcon(
-                            item.iconUrl,
-                            size: imageSize,
-                            backgroundColor: isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : Colors.white.withValues(alpha: 0.45),
-                          ),
+                    child: NetworkIcon(
+                      item.iconUrl,
+                      size: imageSize,
+                      backgroundColor: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.white.withValues(alpha: 0.45),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),

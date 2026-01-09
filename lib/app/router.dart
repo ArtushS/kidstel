@@ -18,6 +18,7 @@ import '../features/settings/settings_page.dart';
 import '../features/settings/voice_help_page.dart';
 import '../features/my_stories/my_stories_page.dart';
 import '../features/debug/firebase_sanity_page.dart';
+import '../shared/models/family_profile.dart';
 import '../shared/models/story_setup.dart';
 import '../features/story_reader/story_reader_args.dart';
 import '../features/story_reader/story_reader_page.dart';
@@ -107,10 +108,11 @@ GoRouter buildRouter({required AuthController auth}) {
             const MaterialPage(child: StorySetupPage()),
       ),
       GoRoute(
-        path: '/reader',
+        path: '/my-stories',
         pageBuilder: (context, state) =>
             const MaterialPage(child: MyStoriesPage()),
       ),
+      GoRoute(path: '/reader', redirect: (context, state) => '/my-stories'),
       GoRoute(
         path: '/settings',
         pageBuilder: (context, state) =>
@@ -135,6 +137,37 @@ GoRouter buildRouter({required AuthController auth}) {
 
           // StorySetupPage currently navigates with a Map payload.
           final map = extra is Map ? extra : null;
+          final rawFamily = (map?['family'] ?? setup?.family);
+
+          FamilyProfile? parseFamily(Object? raw, Object? enabledRaw) {
+            final enabled = (enabledRaw is bool) ? enabledRaw : null;
+            if (raw is FamilyProfile) return raw;
+            if (raw is Map) {
+              final data = Map<String, dynamic>.from(raw);
+              if (enabled != null) {
+                data['enabled'] = data['enabled'] ?? enabled;
+              }
+              return FamilyProfile.fromJson(data);
+            }
+            if (enabled == true) {
+              return const FamilyProfile(
+                enabled: true,
+                grandfatherName: null,
+                grandmotherName: null,
+                fatherName: null,
+                motherName: null,
+                brothers: <String>[],
+                sisters: <String>[],
+              );
+            }
+            return null;
+          }
+
+          final familyProfile = parseFamily(
+            rawFamily,
+            map?['familyEnabled'] ?? setup?.familyEnabled,
+          );
+
           final args = StoryReaderArgs(
             initialResponse: map?['response'],
             restoreStoryId: map?['storyId']?.toString(),
@@ -147,6 +180,8 @@ GoRouter buildRouter({required AuthController auth}) {
                 (map?['imageEnabled'] ?? setup?.imageEnabled ?? false) as bool,
             hero: (map?['hero'] ?? setup?.hero ?? '') as String,
             location: (map?['location'] ?? setup?.location ?? '') as String,
+            locationImage: (map?['locationImage'] ?? setup?.locationImage)
+                ?.toString(),
             // Accept legacy key 'style' (older navigation payloads).
             storyType:
                 (map?['storyType'] ??
@@ -155,6 +190,9 @@ GoRouter buildRouter({required AuthController auth}) {
                         setup?.storyType ??
                         '')
                     as String,
+            storyTypeImage: (map?['storyTypeImage'] ?? setup?.storyTypeImage)
+                ?.toString(),
+            family: familyProfile,
           );
 
           return StoryReaderPage(args: args);

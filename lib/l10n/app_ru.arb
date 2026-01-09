@@ -142,6 +142,22 @@
 
   "interactiveStories": "Включить интерактивные истории",
   "interactiveStoriesSubtitle": "Показывать варианты выбора (до 3 шагов), чтобы продолжать историю",
+  "family": "Семья",
+  "familyEnabled": "Использовать семью в историях",
+  "grandfather": "Дедушка",
+  "grandmother": "Бабушка",
+  "father": "Отец",
+  "mother": "Мать",
+  "brothers": "Братья",
+  "sisters": "Сёстры",
+  "addBrother": "Добавить брата",
+  "addSister": "Добавить сестру",
+  "remove": "Удалить",
+  "familyNameHint": "Имя",
+  "familyNameHelper": "Имя будет использоваться в семейных историях",
+  "familyStory": "История про семью",
+  "storyBannerPlaceholder": "Баннер истории появится здесь",
+  "storyEmpty": "История пока не создана. Создайте новую, чтобы начать чтение.",
 
   "@ttsSystemLabel": {
     "description": "Короткая информационная подпись под полем идеи на экране создания истории." 

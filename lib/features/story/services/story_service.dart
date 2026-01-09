@@ -8,6 +8,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 
 import 'models/generate_story_request.dart';
 import 'models/generate_story_response.dart';
+import 'mock_story_generator.dart';
 
 class StoryService {
   /// Set your Agent endpoint here (Cloud Function HTTPS endpoint or your server).
@@ -32,11 +33,20 @@ class StoryService {
   /// - If the string is literally "null", it is also not sent.
   final String? firebaseLocale;
 
+  /// When true, uses local mock generation instead of network calls.
+  final bool useMock;
+
+  final MockStoryGenerator _mockGenerator;
+
   StoryService({
     required this.endpointUrl,
+    bool? useMock,
+    MockStoryGenerator? mockGenerator,
     bool? appCheckRequired,
     this.firebaseLocale,
-  }) : appCheckRequired = appCheckRequired ?? _defaultAppCheckRequired() {
+  }) : useMock = useMock ?? false,
+       _mockGenerator = mockGenerator ?? MockStoryGenerator(),
+       appCheckRequired = appCheckRequired ?? _defaultAppCheckRequired() {
     if (kDebugMode) {
       final uri = Uri.tryParse(endpointUrl);
       debugPrint(
@@ -441,6 +451,15 @@ class StoryService {
   }
 
   Future<Map<String, dynamic>> callAgentJson(Map<String, dynamic> body) async {
+    if (useMock) {
+      final action = (body['action'] ?? '').toString().trim().toLowerCase();
+      final delayMs = (action == 'generate' || action == 'continue')
+          ? 600 + _rand.nextInt(601)
+          : 300;
+      await Future<void>.delayed(Duration(milliseconds: delayMs));
+      return _mockGenerator.generate(body);
+    }
+
     final uriRaw = Uri.parse(endpointUrl);
     // Normalize host-only URLs to include a root path for clearer logging
     // and maximum compatibility across HTTP stacks.
@@ -906,6 +925,19 @@ extension StoryServiceDebug on StoryService {
   /// - May throw if the request cannot be made (e.g. App Check required but
   ///   token missing, network errors, invalid endpoint URL).
   Future<AgentHttpResult> callAgentHttp(Map<String, dynamic> body) async {
+    if (useMock) {
+      final json = _mockGenerator.generate(body);
+      return AgentHttpResult(
+        statusCode: 200,
+        headers: const <String, String>{'x-kidstel-mock': 'true'},
+        json: json,
+        bodyBytesLength: jsonEncode(json).length,
+        textPreview: null,
+        requestUrl: 'mock://story-service',
+        action: (body['action'] ?? '').toString(),
+      );
+    }
+
     final uriRaw = Uri.parse(endpointUrl);
     final uri = uriRaw.path.isEmpty ? uriRaw.replace(path: '/') : uriRaw;
     final client = http.Client();

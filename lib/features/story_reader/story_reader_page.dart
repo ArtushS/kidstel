@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../shared/settings/settings_scope.dart';
+import '../../shared/widgets/network_icon.dart';
 import '../../shared/tts/tts_service.dart';
 import '../story/controllers/narration_controller.dart';
 import '../story/controllers/story_controller.dart';
@@ -120,6 +121,13 @@ class _StoryReaderBodyState extends State<_StoryReaderBody> {
           },
           child: CustomScrollView(
             slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                sliver: SliverToBoxAdapter(
+                  child: _StoryBanner(state: story),
+                ),
+              ),
+
               if (last != null)
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -156,7 +164,7 @@ class _StoryReaderBodyState extends State<_StoryReaderBody> {
                       padding: EdgeInsets.all(16),
                       child: story.isLoading
                           ? const CircularProgressIndicator()
-                          : Text(l10n.noStoryYet),
+                          : Text(l10n.storyEmpty),
                     ),
                   ),
                 )
@@ -392,6 +400,59 @@ class _ChapterCard extends StatelessWidget {
               softWrap: true,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StoryBanner extends StatelessWidget {
+  final StoryState state;
+
+  const _StoryBanner({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final session = state.session;
+    final locationImage = (session.locationImage ?? '').trim();
+    final typeImage = (session.storyTypeImage ?? '').trim();
+    final source = locationImage.isNotEmpty ? locationImage : typeImage;
+    final hasSource = source.trim().isNotEmpty;
+    final l10n = AppLocalizations.of(context)!;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                NetworkIcon(
+                  source,
+                  fit: BoxFit.cover,
+                  borderRadius: BorderRadius.zero,
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                ),
+                if (!hasSource)
+                  Container(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      l10n.storyBannerPlaceholder,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );

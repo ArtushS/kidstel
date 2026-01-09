@@ -100,6 +100,14 @@ class AppSettings {
   /// null means "not set".
   final String? heroName;
 
+  final bool familyEnabled;
+  final String? grandfatherName;
+  final String? grandmotherName;
+  final String? fatherName;
+  final String? motherName;
+  final List<String> brothers;
+  final List<String> sisters;
+
   final bool voiceNarrationEnabled;
   final bool backgroundMusicEnabled;
   final bool soundEffectsEnabled;
@@ -139,6 +147,13 @@ class AppSettings {
     required this.storyComplexity,
     required this.defaultLanguageCode,
     required this.heroName,
+    required this.familyEnabled,
+    required this.grandfatherName,
+    required this.grandmotherName,
+    required this.fatherName,
+    required this.motherName,
+    required this.brothers,
+    required this.sisters,
     required this.voiceNarrationEnabled,
     required this.backgroundMusicEnabled,
     required this.soundEffectsEnabled,
@@ -195,6 +210,13 @@ class AppSettings {
     storyComplexity: StoryComplexity.normal,
     defaultLanguageCode: 'en',
     heroName: null,
+    familyEnabled: false,
+    grandfatherName: null,
+    grandmotherName: null,
+    fatherName: null,
+    motherName: null,
+    brothers: const <String>[],
+    sisters: const <String>[],
     voiceNarrationEnabled: true,
     backgroundMusicEnabled: false,
     soundEffectsEnabled: true,
@@ -225,6 +247,13 @@ class AppSettings {
     StoryComplexity? storyComplexity,
     String? defaultLanguageCode,
     String? heroName,
+    bool? familyEnabled,
+    String? grandfatherName,
+    String? grandmotherName,
+    String? fatherName,
+    String? motherName,
+    List<String>? brothers,
+    List<String>? sisters,
     bool? voiceNarrationEnabled,
     bool? backgroundMusicEnabled,
     bool? soundEffectsEnabled,
@@ -251,6 +280,13 @@ class AppSettings {
       storyComplexity: storyComplexity ?? this.storyComplexity,
       defaultLanguageCode: defaultLanguageCode ?? this.defaultLanguageCode,
       heroName: heroName ?? this.heroName,
+      familyEnabled: familyEnabled ?? this.familyEnabled,
+      grandfatherName: grandfatherName ?? this.grandfatherName,
+      grandmotherName: grandmotherName ?? this.grandmotherName,
+      fatherName: fatherName ?? this.fatherName,
+      motherName: motherName ?? this.motherName,
+      brothers: brothers ?? this.brothers,
+      sisters: sisters ?? this.sisters,
       voiceNarrationEnabled:
           voiceNarrationEnabled ?? this.voiceNarrationEnabled,
       backgroundMusicEnabled:
@@ -284,6 +320,13 @@ class AppSettings {
     'storyComplexity': storyComplexity.name,
     'defaultLanguageCode': defaultLanguageCode,
     'heroName': heroName,
+    'familyEnabled': familyEnabled,
+    'grandfatherName': grandfatherName,
+    'grandmotherName': grandmotherName,
+    'fatherName': fatherName,
+    'motherName': motherName,
+    'brothers': brothers,
+    'sisters': sisters,
     'voiceNarrationEnabled': voiceNarrationEnabled,
     'backgroundMusicEnabled': backgroundMusicEnabled,
     'soundEffectsEnabled': soundEffectsEnabled,
@@ -313,6 +356,17 @@ class AppSettings {
       if (v.name == name) return v;
     }
     return fallback;
+  }
+
+  static List<String> _stringList(Object? raw) {
+    if (raw is List) {
+      return raw
+          .map((e) => e?.toString() ?? '')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList(growable: false);
+    }
+    return const <String>[];
   }
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -350,6 +404,13 @@ class AppSettings {
         if (raw == null) return null;
         return raw.toString();
       })(),
+      familyEnabled: (json['familyEnabled'] ?? false) as bool,
+      grandfatherName: json['grandfatherName']?.toString(),
+      grandmotherName: json['grandmotherName']?.toString(),
+      fatherName: json['fatherName']?.toString(),
+      motherName: json['motherName']?.toString(),
+      brothers: _stringList(json['brothers']),
+      sisters: _stringList(json['sisters']),
       voiceNarrationEnabled: (json['voiceNarrationEnabled'] ?? true) as bool,
       backgroundMusicEnabled: (json['backgroundMusicEnabled'] ?? false) as bool,
       soundEffectsEnabled: (json['soundEffectsEnabled'] ?? true) as bool,

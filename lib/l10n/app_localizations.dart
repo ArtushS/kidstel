@@ -945,6 +945,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show choices (up to 3 steps) to continue the story'**
   String get interactiveStoriesSubtitle;
+
+  /// No description provided for @family.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get family;
+
+  /// No description provided for @familyEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Use family in stories'**
+  String get familyEnabled;
+
+  /// No description provided for @grandfather.
+  ///
+  /// In en, this message translates to:
+  /// **'Grandfather'**
+  String get grandfather;
+
+  /// No description provided for @grandmother.
+  ///
+  /// In en, this message translates to:
+  /// **'Grandmother'**
+  String get grandmother;
+
+  /// No description provided for @father.
+  ///
+  /// In en, this message translates to:
+  /// **'Father'**
+  String get father;
+
+  /// No description provided for @mother.
+  ///
+  /// In en, this message translates to:
+  /// **'Mother'**
+  String get mother;
+
+  /// No description provided for @brothers.
+  ///
+  /// In en, this message translates to:
+  /// **'Brothers'**
+  String get brothers;
+
+  /// No description provided for @sisters.
+  ///
+  /// In en, this message translates to:
+  /// **'Sisters'**
+  String get sisters;
+
+  /// No description provided for @addBrother.
+  ///
+  /// In en, this message translates to:
+  /// **'Add brother'**
+  String get addBrother;
+
+  /// No description provided for @addSister.
+  ///
+  /// In en, this message translates to:
+  /// **'Add sister'**
+  String get addSister;
+
+  /// No description provided for @remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get remove;
+
+  /// No description provided for @familyNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get familyNameHint;
+
+  /// No description provided for @familyNameHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'The name will be used in family stories'**
+  String get familyNameHelper;
+
+  /// No description provided for @familyStory.
+  ///
+  /// In en, this message translates to:
+  /// **'Family story'**
+  String get familyStory;
+
+  /// No description provided for @storyBannerPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Story banner will appear here'**
+  String get storyBannerPlaceholder;
+
+  /// No description provided for @storyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No story yet. Create one to start reading.'**
+  String get storyEmpty;
 }
 
 class _AppLocalizationsDelegate

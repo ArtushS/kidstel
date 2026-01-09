@@ -233,6 +233,12 @@ class StoryController extends ChangeNotifier {
       },
     };
 
+    final family = _session.family;
+    if (family != null) {
+      body['familyEnabled'] = family.enabled;
+      body['family'] = family.toJson();
+    }
+
     final idea = _session.idea?.trim();
     if (idea != null && idea.isNotEmpty) {
       body['idea'] = idea;
@@ -368,8 +374,11 @@ class StoryController extends ChangeNotifier {
       interactiveEnabled: _interactiveStoriesEnabled,
       hero: args.hero,
       location: args.location,
+      locationImage: args.locationImage,
       storyType: args.storyType,
+      storyTypeImage: args.storyTypeImage,
       idea: null,
+      family: args.family,
     );
 
     final localId = _ensureStoryId('');
@@ -469,6 +478,12 @@ class StoryController extends ChangeNotifier {
         'payload': choice.payload,
       },
     };
+
+    final family = _session.family;
+    if (family != null) {
+      body['familyEnabled'] = family.enabled;
+      body['family'] = family.toJson();
+    }
 
     _lastRequestBody = Map<String, dynamic>.from(body);
 
@@ -668,8 +683,11 @@ class StoryController extends ChangeNotifier {
         interactiveEnabled: _session.interactiveEnabled,
         hero: _session.hero,
         location: _session.location,
+        locationImage: _session.locationImage,
         storyType: _session.storyType,
+        storyTypeImage: _session.storyTypeImage,
         idea: _session.idea,
+        family: _session.family,
       );
       _state = _state.copyWith(session: _session, lastUpdated: _now());
       notifyListeners();

@@ -108,7 +108,10 @@ class _KidsTelAppState extends State<KidsTelApp> {
           create: (_) => SharedPreferencesStoryRepository(),
         ),
         Provider<StoryService>(
-          create: (_) => StoryService(endpointUrl: storyAgentUrl),
+          create: (_) => StoryService(
+            endpointUrl: storyAgentUrl,
+            useMock: useMockStoryGeneration,
+          ),
         ),
         Provider<ImageGenerationService>(
           create: (ctx) => AgentImageGenerationService(

@@ -1,3 +1,4 @@
+import '../../shared/models/family_profile.dart';
 import '../story/services/models/generate_story_response.dart';
 
 /// Data-only arguments to open [StoryReaderPage].
@@ -17,7 +18,10 @@ class StoryReaderArgs {
   final bool imageEnabled;
   final String hero;
   final String location;
+  final String? locationImage;
   final String storyType;
+  final String? storyTypeImage;
+  final FamilyProfile? family;
 
   const StoryReaderArgs({
     this.initialResponse,
@@ -29,6 +33,9 @@ class StoryReaderArgs {
     this.imageEnabled = false,
     this.hero = '',
     this.location = '',
+    this.locationImage,
     this.storyType = '',
+    this.storyTypeImage,
+    this.family,
   });
 }

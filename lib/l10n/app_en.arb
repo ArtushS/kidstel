@@ -143,6 +143,22 @@
 
   "interactiveStories": "Enable interactive stories",
   "interactiveStoriesSubtitle": "Show choices (up to 3 steps) to continue the story",
+  "family": "Family",
+  "familyEnabled": "Use family in stories",
+  "grandfather": "Grandfather",
+  "grandmother": "Grandmother",
+  "father": "Father",
+  "mother": "Mother",
+  "brothers": "Brothers",
+  "sisters": "Sisters",
+  "addBrother": "Add brother",
+  "addSister": "Add sister",
+  "remove": "Remove",
+  "familyNameHint": "Name",
+  "familyNameHelper": "The name will be used in family stories",
+  "familyStory": "Family story",
+  "storyBannerPlaceholder": "Story banner will appear here",
+  "storyEmpty": "No story yet. Create one to start reading.",
 
   "@ttsSystemLabel": {
     "description": "Short informational label shown under the idea input on Create New Story page."

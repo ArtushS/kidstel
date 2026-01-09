@@ -56,6 +56,28 @@ class SettingsController extends ChangeNotifier {
   Future<void> setInteractiveStoriesEnabled(bool value) =>
       _update(_settings.copyWith(interactiveStoriesEnabled: value));
 
+  // Family
+  Future<void> setFamilyEnabled(bool value) =>
+      _update(_settings.copyWith(familyEnabled: value));
+
+  Future<void> setGrandfatherName(String? value) =>
+      _update(_settings.copyWith(grandfatherName: value));
+
+  Future<void> setGrandmotherName(String? value) =>
+      _update(_settings.copyWith(grandmotherName: value));
+
+  Future<void> setFatherName(String? value) =>
+      _update(_settings.copyWith(fatherName: value));
+
+  Future<void> setMotherName(String? value) =>
+      _update(_settings.copyWith(motherName: value));
+
+  Future<void> setBrothers(List<String> value) =>
+      _update(_settings.copyWith(brothers: value));
+
+  Future<void> setSisters(List<String> value) =>
+      _update(_settings.copyWith(sisters: value));
+
   // Audio
   Future<void> setVoiceNarrationEnabled(bool value) =>
       _update(_settings.copyWith(voiceNarrationEnabled: value));

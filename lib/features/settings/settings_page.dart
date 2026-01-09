@@ -336,6 +336,84 @@ class SettingsPage extends StatelessWidget {
             ),
 
             SettingsSection(
+              title: l10n.family,
+              children: [
+                SwitchTile(
+                  leading: const Icon(Icons.family_restroom_outlined),
+                  title: l10n.familyEnabled,
+                  value: s.familyEnabled,
+                  onChanged: controller.setFamilyEnabled,
+                ),
+                _FamilyMemberTextTile(
+                  value: s.grandfatherName,
+                  label: l10n.grandfather,
+                  hint: l10n.familyNameHint,
+                  helper: l10n.familyNameHelper,
+                  onChanged: controller.setGrandfatherName,
+                ),
+                _FamilyMemberTextTile(
+                  value: s.grandmotherName,
+                  label: l10n.grandmother,
+                  hint: l10n.familyNameHint,
+                  helper: l10n.familyNameHelper,
+                  onChanged: controller.setGrandmotherName,
+                ),
+                _FamilyMemberTextTile(
+                  value: s.fatherName,
+                  label: l10n.father,
+                  hint: l10n.familyNameHint,
+                  helper: l10n.familyNameHelper,
+                  onChanged: controller.setFatherName,
+                ),
+                _FamilyMemberTextTile(
+                  value: s.motherName,
+                  label: l10n.mother,
+                  hint: l10n.familyNameHint,
+                  helper: l10n.familyNameHelper,
+                  onChanged: controller.setMotherName,
+                ),
+                _DynamicNamesListTile(
+                  title: l10n.brothers,
+                  addLabel: l10n.addBrother,
+                  values: s.brothers,
+                  hint: l10n.familyNameHint,
+                  helper: l10n.familyNameHelper,
+                  removeLabel: l10n.remove,
+                  onAdd: () =>
+                      controller.setBrothers([...s.brothers, '']),
+                  onRemove: (index) {
+                    final next = [...s.brothers]..removeAt(index);
+                    controller.setBrothers(next);
+                  },
+                  onChanged: (index, value) {
+                    final next = [...s.brothers];
+                    next[index] = value;
+                    controller.setBrothers(next);
+                  },
+                ),
+                _DynamicNamesListTile(
+                  title: l10n.sisters,
+                  addLabel: l10n.addSister,
+                  values: s.sisters,
+                  hint: l10n.familyNameHint,
+                  helper: l10n.familyNameHelper,
+                  removeLabel: l10n.remove,
+                  onAdd: () =>
+                      controller.setSisters([...s.sisters, '']),
+                  onRemove: (index) {
+                    final next = [...s.sisters]..removeAt(index);
+                    controller.setSisters(next);
+                  },
+                  onChanged: (index, value) {
+                    final next = [...s.sisters];
+                    next[index] = value;
+                    controller.setSisters(next);
+                  },
+                ),
+              ],
+            ),
+
+            SettingsSection(
               title: t?.audio ?? 'Audio',
               children: [
                 SwitchTile(
@@ -565,6 +643,160 @@ class _HeroNameTileState extends State<_HeroNameTile> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _FamilyMemberTextTile extends StatefulWidget {
+  final String? value;
+  final String label;
+  final String hint;
+  final String helper;
+  final ValueChanged<String> onChanged;
+  final VoidCallback? onRemove;
+  final String? removeLabel;
+
+  const _FamilyMemberTextTile({
+    super.key,
+    required this.value,
+    required this.label,
+    required this.hint,
+    required this.helper,
+    required this.onChanged,
+    this.onRemove,
+    this.removeLabel,
+  });
+
+  @override
+  State<_FamilyMemberTextTile> createState() => _FamilyMemberTextTileState();
+}
+
+class _FamilyMemberTextTileState extends State<_FamilyMemberTextTile> {
+  late final TextEditingController _ctrl;
+  final FocusNode _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.value ?? '');
+  }
+
+  @override
+  void didUpdateWidget(covariant _FamilyMemberTextTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextText = widget.value ?? '';
+    if (!_focus.hasFocus && _ctrl.text != nextText) {
+      _ctrl.text = nextText;
+    }
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ListTile(
+      title: Text(widget.label),
+      trailing: widget.onRemove == null
+          ? null
+          : IconButton(
+              tooltip: widget.removeLabel,
+              icon: const Icon(Icons.delete_outline),
+              onPressed: widget.onRemove,
+            ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.helper,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _ctrl,
+              focusNode: _focus,
+              decoration: InputDecoration(hintText: widget.hint, isDense: true),
+              onChanged: widget.onChanged,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DynamicNamesListTile extends StatelessWidget {
+  final String title;
+  final String addLabel;
+  final List<String> values;
+  final String hint;
+  final String helper;
+  final String removeLabel;
+  final VoidCallback onAdd;
+  final void Function(int index) onRemove;
+  final void Function(int index, String value) onChanged;
+
+  const _DynamicNamesListTile({
+    required this.title,
+    required this.addLabel,
+    required this.values,
+    required this.hint,
+    required this.helper,
+    required this.removeLabel,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Text(
+              title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          for (var i = 0; i < values.length; i++)
+            _FamilyMemberTextTile(
+              key: ValueKey('$title-$i'),
+              value: values[i],
+              label: '$title ${i + 1}',
+              hint: hint,
+              helper: helper,
+              removeLabel: removeLabel,
+              onChanged: (value) => onChanged(i, value),
+              onRemove: () => onRemove(i),
+            ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: Text(addLabel),
+            ),
+          ),
+        ],
       ),
     );
   }

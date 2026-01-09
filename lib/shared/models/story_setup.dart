@@ -7,7 +7,11 @@ class StorySetup {
   final bool imageEnabled;
   final String hero;
   final String location;
+  final String? locationImage;
   final String storyType;
+  final String? storyTypeImage;
+  final bool familyEnabled;
+  final Map<String, dynamic>? family;
 
   /// User idea (typed or dictated)
   final String? idea;
@@ -21,7 +25,11 @@ class StorySetup {
     required this.imageEnabled,
     required this.hero,
     required this.location,
+    required this.locationImage,
     required this.storyType,
+    required this.storyTypeImage,
+    required this.familyEnabled,
+    required this.family,
     this.idea,
   });
 }

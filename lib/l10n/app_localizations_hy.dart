@@ -440,4 +440,54 @@ class AppLocalizationsHy extends AppLocalizations {
   @override
   String get interactiveStoriesSubtitle =>
       'Ցուցադրել ընտրանքներ (մինչև 3 քայլ)՝ պատմությունը շարունակելու համար';
+
+  @override
+  String get family => 'Ընտանիք';
+
+  @override
+  String get familyEnabled => 'Օգտագործել ընտանիքը պատմություններում';
+
+  @override
+  String get grandfather => 'Պապիկ';
+
+  @override
+  String get grandmother => 'Տատիկ';
+
+  @override
+  String get father => 'Հայր';
+
+  @override
+  String get mother => 'Մայր';
+
+  @override
+  String get brothers => 'Եղբայրներ';
+
+  @override
+  String get sisters => 'Քույրեր';
+
+  @override
+  String get addBrother => 'Ավելացնել եղբայր';
+
+  @override
+  String get addSister => 'Ավելացնել քույր';
+
+  @override
+  String get remove => 'Հեռացնել';
+
+  @override
+  String get familyNameHint => 'Անուն';
+
+  @override
+  String get familyNameHelper =>
+      'Անունը կօգտագործվի ընտանեկան պատմություններում';
+
+  @override
+  String get familyStory => 'Ընտանեկան պատմություն';
+
+  @override
+  String get storyBannerPlaceholder => 'Պատմության նկարը կհայտնվի այստեղ';
+
+  @override
+  String get storyEmpty =>
+      'Պատմություն դեռ չկա։ Ստեղծեք նոր պատմություն՝ սկսելու համար։';
 }

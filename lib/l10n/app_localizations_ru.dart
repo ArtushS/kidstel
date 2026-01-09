@@ -438,4 +438,53 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get interactiveStoriesSubtitle =>
       'Показывать варианты выбора (до 3 шагов), чтобы продолжать историю';
+
+  @override
+  String get family => 'Семья';
+
+  @override
+  String get familyEnabled => 'Использовать семью в историях';
+
+  @override
+  String get grandfather => 'Дедушка';
+
+  @override
+  String get grandmother => 'Бабушка';
+
+  @override
+  String get father => 'Отец';
+
+  @override
+  String get mother => 'Мать';
+
+  @override
+  String get brothers => 'Братья';
+
+  @override
+  String get sisters => 'Сёстры';
+
+  @override
+  String get addBrother => 'Добавить брата';
+
+  @override
+  String get addSister => 'Добавить сестру';
+
+  @override
+  String get remove => 'Удалить';
+
+  @override
+  String get familyNameHint => 'Имя';
+
+  @override
+  String get familyNameHelper => 'Имя будет использоваться в семейных историях';
+
+  @override
+  String get familyStory => 'История про семью';
+
+  @override
+  String get storyBannerPlaceholder => 'Баннер истории появится здесь';
+
+  @override
+  String get storyEmpty =>
+      'История пока не создана. Создайте новую, чтобы начать чтение.';
 }

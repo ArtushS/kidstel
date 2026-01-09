@@ -52,7 +52,7 @@ class HomePage extends StatelessWidget {
                       _NeumorphicCircleButton(
                         icon: Icons.menu_book_outlined,
                         label: t.myStories,
-                        onTap: () => context.push('/reader'),
+                        onTap: () => context.push('/my-stories'),
                       ),
                     ],
                   ),

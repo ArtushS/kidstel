@@ -439,4 +439,52 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get interactiveStoriesSubtitle =>
       'Show choices (up to 3 steps) to continue the story';
+
+  @override
+  String get family => 'Family';
+
+  @override
+  String get familyEnabled => 'Use family in stories';
+
+  @override
+  String get grandfather => 'Grandfather';
+
+  @override
+  String get grandmother => 'Grandmother';
+
+  @override
+  String get father => 'Father';
+
+  @override
+  String get mother => 'Mother';
+
+  @override
+  String get brothers => 'Brothers';
+
+  @override
+  String get sisters => 'Sisters';
+
+  @override
+  String get addBrother => 'Add brother';
+
+  @override
+  String get addSister => 'Add sister';
+
+  @override
+  String get remove => 'Remove';
+
+  @override
+  String get familyNameHint => 'Name';
+
+  @override
+  String get familyNameHelper => 'The name will be used in family stories';
+
+  @override
+  String get familyStory => 'Family story';
+
+  @override
+  String get storyBannerPlaceholder => 'Story banner will appear here';
+
+  @override
+  String get storyEmpty => 'No story yet. Create one to start reading.';
 }
