@@ -1522,9 +1522,20 @@ class _CarouselSection extends StatelessWidget {
                 animation: controller,
                 builder: (context, child) {
                   double t = 1.0;
-                  if (controller.position.haveDimensions) {
-                    final page =
-                        controller.page ?? controller.initialPage.toDouble();
+                  // During the very first build (or while widgets are being
+                  // switched in/out), the PageController may temporarily have
+                  // 0 (or >1) attached positions. Accessing `position`/`page`
+                  // would assert in debug. Keep the UI resilient.
+                  double? page;
+                  if (controller.hasClients) {
+                    try {
+                      page = controller.page;
+                    } on AssertionError {
+                      page = null;
+                    }
+                  }
+
+                  if (page != null) {
                     t = (1 - ((page - index).abs() * 0.18)).clamp(0.84, 1.0);
                   }
                   return Transform.scale(scale: t, child: child);
