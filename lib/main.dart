@@ -13,7 +13,7 @@ Future<void> main() async {
   if (kDebugMode) {
     debugPrint(
       'If AppCheck debug token appears in logs, copy it to Firebase Console → '
-      'App Check → Apps → KidsTel Android → Manage debug tokens',
+      'App Check → Apps → FairyCraft Android → Manage debug tokens',
     );
   }
 
