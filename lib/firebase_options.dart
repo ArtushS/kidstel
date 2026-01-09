@@ -66,7 +66,9 @@ class DefaultFirebaseOptions {
     messagingSenderId: '924507937416',
     projectId: 'kids-tell-d0ks8m',
     storageBucket: 'kids-tell-d0ks8m.firebasestorage.app',
-    iosBundleId: 'com.example.kidsdom',
+    // NOTE(rename): This should match the iOS bundle id after renaming.
+    // If you re-run `flutterfire configure`, it will regenerate this file.
+    iosBundleId: 'com.fairycraft.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

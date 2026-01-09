@@ -1,6 +1,6 @@
-# kidsdom
+# FairyCraft
 
-A new Flutter project.
+FairyCraft (formerly kidsdom) — Flutter project.
 
 ## Getting Started
 

@@ -1,5 +1,6 @@
 package com.example.kidsdom
 
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity : FlutterActivity()
+// Deprecated stub after renaming the app to FairyCraft.
+// The real entry point is now com.fairycraft.app.MainActivity.
+//
+// This file is intentionally left without any classes.

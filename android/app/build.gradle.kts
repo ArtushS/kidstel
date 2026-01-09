@@ -1,13 +1,17 @@
 plugins {
     id("com.android.application")
-    id("com.google.gms.google-services")
+    // NOTE(rename): Firebase is initialized via DefaultFirebaseOptions in Dart.
+    // The google-services plugin requires a matching client in google-services.json
+    // for the new applicationId; re-enable it after downloading an updated
+    // android/app/google-services.json for com.fairycraft.app.
+    // id("com.google.gms.google-services")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 
 android {
-    namespace = "com.example.kidsdom"
+    namespace = "com.fairycraft.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +25,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.kidsdom"
+        applicationId = "com.fairycraft.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
