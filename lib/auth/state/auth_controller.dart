@@ -104,6 +104,10 @@ class AuthController extends ChangeNotifier {
     await _runAuth(() => _service.signInWithFacebook());
   }
 
+  Future<void> linkWithFacebook() async {
+    await _runLink(() => _service.linkWithFacebook());
+  }
+
   Future<void> signOut() async {
     await _runVoid(() => _service.signOut());
   }
@@ -132,6 +136,43 @@ class AuthController extends ChangeNotifier {
       _state = _state.copyWith(
         status: AuthStatus.unauthenticated,
         user: null,
+        failure: AuthFailure.unknown,
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> _runLink(Future<AuthUser> Function() op) async {
+    // Linking should not log the user out on failure.
+    final existingUser = _state.user;
+
+    _state = _state.copyWith(status: AuthStatus.loading, clearFailure: true);
+    notifyListeners();
+
+    try {
+      final user = await op();
+      _state = _state.copyWith(
+        status: AuthStatus.authenticated,
+        user: user,
+        clearFailure: true,
+      );
+      notifyListeners();
+    } on AuthFailure catch (f) {
+      _state = _state.copyWith(
+        status: existingUser == null
+            ? AuthStatus.unauthenticated
+            : AuthStatus.authenticated,
+        user: existingUser,
+        failure: f,
+      );
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Auth link op failed: $e');
+      _state = _state.copyWith(
+        status: existingUser == null
+            ? AuthStatus.unauthenticated
+            : AuthStatus.authenticated,
+        user: existingUser,
         failure: AuthFailure.unknown,
       );
       notifyListeners();

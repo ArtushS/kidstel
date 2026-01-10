@@ -91,6 +91,24 @@ class AuthServiceMock implements AuthService {
   }
 
   @override
+  Future<AuthUser> linkWithFacebook() async {
+    final u = _current;
+    if (u == null) {
+      throw const AuthFailure(code: 'not-signed-in', message: 'Not signed in.');
+    }
+
+    final next = AuthUser(
+      uid: u.uid,
+      email: u.email,
+      displayName: u.displayName,
+      isAnonymous: false,
+      providerIds: {...u.providerIds, 'facebook.com'}.toList(growable: false),
+    );
+    _emit(next);
+    return next;
+  }
+
+  @override
   Future<void> signOut() async {
     _emit(null);
   }

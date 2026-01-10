@@ -79,6 +79,14 @@ class AccountPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
+                  onPressed: user == null
+                      ? null
+                      : () => context.push('/provider-link'),
+                  icon: const Icon(Icons.link),
+                  label: const Text('Linked accounts'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
                   onPressed: () async {
                     await context.read<AuthController>().signOut();
                     if (context.mounted) context.go('/auth');

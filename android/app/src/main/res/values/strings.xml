@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FairyCraft</string>
+
+    <!-- Facebook Login (fill with your Meta App values) -->
+    <string name="facebook_app_id">REPLACE_WITH_FACEBOOK_APP_ID</string>
+    <string name="facebook_client_token">REPLACE_WITH_FACEBOOK_CLIENT_TOKEN</string>
+    <string name="fb_login_protocol_scheme">fbREPLACE_WITH_FACEBOOK_APP_ID</string>
 </resources>

@@ -1,4 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:flutter/foundation.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
 import '../domain/auth_failure.dart';
 import '../domain/auth_user.dart';
@@ -62,8 +64,26 @@ class AuthServiceFirebase implements AuthService {
           code: 'requires-recent-login',
           message: 'Please sign in again and retry.',
         );
+      case 'account-exists-with-different-credential':
+        return const AuthFailure(
+          code: 'account-exists-with-different-credential',
+          message:
+              'An account already exists with a different sign-in method. Please sign in using that method and then link Facebook from Account settings.',
+        );
+      case 'credential-already-in-use':
+        return const AuthFailure(
+          code: 'credential-already-in-use',
+          message:
+              'This Facebook account is already linked to another user. Please sign in with Facebook instead.',
+        );
       default:
         return AuthFailure.unknown;
+    }
+  }
+
+  void _logFb(String message) {
+    if (kDebugMode) {
+      debugPrint('[FB] $message');
     }
   }
 
@@ -152,11 +172,139 @@ class AuthServiceFirebase implements AuthService {
 
   @override
   Future<AuthUser> signInWithFacebook() async {
-    throw const AuthFailure(code: 'todo', message: 'TODO: Facebook sign-in');
+    try {
+      _logFb('signIn start');
+
+      // Force browser-based login so Android emulator works without the FB app.
+      final result = await FacebookAuth.i.login(
+        permissions: const ['email', 'public_profile'],
+        loginBehavior: LoginBehavior.webOnly,
+      );
+
+      _logFb('login result status=${result.status}');
+
+      switch (result.status) {
+        case LoginStatus.success:
+          final token = result.accessToken?.tokenString;
+          if (token == null || token.isEmpty) {
+            throw const AuthFailure(
+              code: 'facebook-missing-token',
+              message: 'Facebook sign-in failed. Please try again.',
+            );
+          }
+
+          final credential = fb.FacebookAuthProvider.credential(token);
+          final cred = await _auth.signInWithCredential(credential);
+          final user = cred.user;
+          if (user == null) throw AuthFailure.unknown;
+          _logFb('firebase signInWithCredential ok uid=${user.uid}');
+          return _mapUser(user);
+
+        case LoginStatus.cancelled:
+          throw const AuthFailure(
+            code: 'facebook-cancelled',
+            message: 'Facebook sign-in was cancelled.',
+          );
+
+        case LoginStatus.failed:
+          _logFb('login failed message=${result.message}');
+          throw AuthFailure(
+            code: 'facebook-failed',
+            message: result.message?.trim().isNotEmpty == true
+                ? result.message!.trim()
+                : 'Facebook sign-in failed. Please try again.',
+          );
+
+        case LoginStatus.operationInProgress:
+          throw const AuthFailure(
+            code: 'facebook-in-progress',
+            message: 'Facebook sign-in is already in progress.',
+          );
+      }
+    } on AuthFailure {
+      rethrow;
+    } on fb.FirebaseAuthException catch (e) {
+      _logFb('firebase_auth_exception code=${e.code} msg=${e.message}');
+      throw _mapFirebaseAuthException(e);
+    } catch (e) {
+      _logFb('facebook signIn unknown error: $e');
+      throw AuthFailure(
+        code: 'facebook-unknown',
+        message: 'Facebook sign-in failed. Please try again.',
+      );
+    }
+  }
+
+  @override
+  Future<AuthUser> linkWithFacebook() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AuthFailure(code: 'not-signed-in', message: 'Not signed in.');
+    }
+
+    try {
+      _logFb('link start uid=${user.uid} anon=${user.isAnonymous}');
+
+      final result = await FacebookAuth.i.login(
+        permissions: const ['email', 'public_profile'],
+        loginBehavior: LoginBehavior.webOnly,
+      );
+
+      _logFb('link login result status=${result.status}');
+
+      if (result.status == LoginStatus.cancelled) {
+        throw const AuthFailure(
+          code: 'facebook-cancelled',
+          message: 'Facebook linking was cancelled.',
+        );
+      }
+
+      if (result.status != LoginStatus.success) {
+        throw AuthFailure(
+          code: 'facebook-link-failed',
+          message: result.message?.trim().isNotEmpty == true
+              ? result.message!.trim()
+              : 'Could not link Facebook. Please try again.',
+        );
+      }
+
+      final token = result.accessToken?.tokenString;
+      if (token == null || token.isEmpty) {
+        throw const AuthFailure(
+          code: 'facebook-missing-token',
+          message: 'Could not link Facebook. Please try again.',
+        );
+      }
+
+      final credential = fb.FacebookAuthProvider.credential(token);
+      final cred = await user.linkWithCredential(credential);
+      final linked = cred.user;
+      if (linked == null) throw AuthFailure.unknown;
+      _logFb('link ok uid=${linked.uid}');
+      return _mapUser(linked);
+    } on AuthFailure catch (f) {
+      _logFb('link auth failure code=${f.code}');
+      rethrow;
+    } on fb.FirebaseAuthException catch (e) {
+      _logFb('link firebase_auth_exception code=${e.code} msg=${e.message}');
+      throw _mapFirebaseAuthException(e);
+    } catch (e) {
+      _logFb('facebook link unknown error: $e');
+      throw AuthFailure(
+        code: 'facebook-link-unknown',
+        message: 'Could not link Facebook. Please try again.',
+      );
+    }
   }
 
   @override
   Future<void> signOut() async {
+    // Best-effort: clear Facebook session so next sign-in shows the web UI.
+    try {
+      await FacebookAuth.i.logOut();
+    } catch (_) {
+      // Ignore.
+    }
     await _auth.signOut();
   }
 }

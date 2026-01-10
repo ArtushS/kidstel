@@ -33,6 +33,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final failure = auth.state.failure;
+    final isLoading = auth.state.status == AuthStatus.loading;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Sign in')),
@@ -105,7 +106,7 @@ class _LoginPageState extends State<LoginPage> {
               child: const Text('Forgot password?'),
             ),
             const Divider(height: 32),
-            _SocialButtons(),
+            _SocialButtons(isLoading: isLoading),
           ],
         ),
       ),
@@ -114,39 +115,64 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 class _SocialButtons extends StatelessWidget {
+  final bool isLoading;
+
+  const _SocialButtons({required this.isLoading});
+
+  void _showFailureSnack(BuildContext context) {
+    final failure = context.read<AuthController>().state.failure;
+    if (failure == null) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${failure.message} (${failure.code})')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         OutlinedButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('TODO: Google sign-in')),
-            );
-          },
+          onPressed: isLoading
+              ? null
+              : () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('TODO: Google sign-in')),
+                  );
+                },
           icon: const Icon(Icons.g_mobiledata),
           label: const Text('Continue with Google'),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('TODO: Apple sign-in')),
-            );
-          },
+          onPressed: isLoading
+              ? null
+              : () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('TODO: Apple sign-in')),
+                  );
+                },
           icon: const Icon(Icons.apple),
           label: const Text('Continue with Apple'),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('TODO: Facebook sign-in')),
-            );
-          },
-          icon: const Icon(Icons.facebook),
-          label: const Text('Continue with Facebook'),
+          onPressed: isLoading
+              ? null
+              : () async {
+                  await context.read<AuthController>().signInWithFacebook();
+                  if (!context.mounted) return;
+                  _showFailureSnack(context);
+                },
+          icon: isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.facebook),
+          label: Text(isLoading ? 'Signing in…' : 'Continue with Facebook'),
         ),
       ],
     );

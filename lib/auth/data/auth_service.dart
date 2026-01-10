@@ -22,5 +22,12 @@ abstract class AuthService {
 
   Future<AuthUser> signInWithFacebook();
 
+  /// Link Facebook to the currently signed-in Firebase user.
+  ///
+  /// Typical cases:
+  /// - Anonymous user: this upgrades the account.
+  /// - Email/password user: adds Facebook as an additional provider.
+  Future<AuthUser> linkWithFacebook();
+
   Future<void> signOut();
 }
